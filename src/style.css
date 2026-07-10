@@ -109,10 +109,6 @@ button {
 }
 
 #pause-button {
-  right: max(66px, calc(env(safe-area-inset-right) + 66px));
-}
-
-#mute-button {
   right: max(12px, calc(env(safe-area-inset-right) + 12px));
 }
 

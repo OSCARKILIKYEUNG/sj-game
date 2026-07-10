@@ -54,7 +54,6 @@ export class GameScene extends Phaser.Scene {
   private keyA!: Phaser.Input.Keyboard.Key;
   private keyD!: Phaser.Input.Keyboard.Key;
   private keyP!: Phaser.Input.Keyboard.Key;
-  private keyM!: Phaser.Input.Keyboard.Key;
   private titleLayer!: Phaser.GameObjects.Container;
   private scoreText!: Phaser.GameObjects.Text;
   private hudPanel!: Phaser.GameObjects.Graphics;
@@ -95,7 +94,6 @@ export class GameScene extends Phaser.Scene {
   private weakText: Phaser.GameObjects.Text | null = null;
   private gameOverText: Phaser.GameObjects.Text | null = null;
   private bodyKnockUntil = 0;
-  private muted = false;
 
   constructor() {
     super('Game');
@@ -114,8 +112,6 @@ export class GameScene extends Phaser.Scene {
     this.createTitle();
     this.bindInput();
     this.bindPhysics();
-    this.muted = readBoolean('sjMute');
-    this.sound.setMute(this.muted);
     this.enterTitle();
 
     const query = new URLSearchParams(window.location.search);
@@ -191,21 +187,6 @@ export class GameScene extends Phaser.Scene {
     this.pauseReasons.delete('background');
     this.applyPauseState();
     this.syncPauseOverlay();
-  }
-
-  toggleMute(): boolean {
-    this.muted = !this.muted;
-    this.sound.setMute(this.muted);
-    try {
-      localStorage.setItem('sjMute', this.muted ? '1' : '0');
-    } catch {
-      // Storage can be unavailable in private browsing. The game still works.
-    }
-    return this.muted;
-  }
-
-  isMuted(): boolean {
-    return this.muted;
   }
 
   private createGroups(): void {
@@ -333,14 +314,12 @@ export class GameScene extends Phaser.Scene {
     this.keyA = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A);
     this.keyD = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D);
     this.keyP = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
-    this.keyM = keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
     keyboard.addCapture([
       Phaser.Input.Keyboard.KeyCodes.LEFT,
       Phaser.Input.Keyboard.KeyCodes.RIGHT,
       Phaser.Input.Keyboard.KeyCodes.SPACE,
     ]);
     this.keyP.on('down', () => this.toggleManualPause());
-    this.keyM.on('down', () => this.toggleMute());
     this.cursors.space.on('down', () => {
       if (this.phase === 'title') this.startGame();
       else if (this.phase === 'dead' && this.time.now - this.deadAt > 600) this.startGame();
@@ -1114,13 +1093,5 @@ function readNumber(key: string): number {
     return Number.isFinite(value) ? value : 0;
   } catch {
     return 0;
-  }
-}
-
-function readBoolean(key: string): boolean {
-  try {
-    return localStorage.getItem(key) === '1';
-  } catch {
-    return false;
   }
 }

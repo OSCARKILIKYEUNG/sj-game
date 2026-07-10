@@ -42,18 +42,11 @@ function scene(): GameScene | null {
 }
 
 const pauseButton = requiredButton('#pause-button');
-const muteButton = requiredButton('#mute-button');
 const resumeButton = requiredButton('#resume-button');
 
 pauseButton.addEventListener('click', (event) => {
   event.stopPropagation();
   scene()?.toggleManualPause();
-});
-
-muteButton.addEventListener('click', (event) => {
-  event.stopPropagation();
-  const muted = scene()?.toggleMute() ?? false;
-  syncMuteButton(muted);
 });
 
 resumeButton.addEventListener('click', (event) => {
@@ -83,7 +76,6 @@ landscapeQuery.addEventListener('change', syncRotation);
 coarsePointerQuery.addEventListener('change', syncRotation);
 window.addEventListener('orientationchange', syncRotation);
 window.setTimeout(syncRotation, 150);
-window.setTimeout(() => syncMuteButton(scene()?.isMuted() ?? false), 150);
 
 document.addEventListener('contextmenu', (event) => event.preventDefault());
 
@@ -105,9 +97,4 @@ function requiredButton(selector: string): HTMLButtonElement {
   const element = document.querySelector<HTMLButtonElement>(selector);
   if (!element) throw new Error(`Missing required button: ${selector}`);
   return element;
-}
-
-function syncMuteButton(muted: boolean): void {
-  muteButton.textContent = muted ? '×' : '♪';
-  muteButton.setAttribute('aria-label', muted ? 'Unmute game' : 'Mute game');
 }

@@ -4,7 +4,7 @@ export default defineConfig({
   base: '/sj-game/',
   build: {
     target: 'es2022',
-    sourcemap: true,
+    sourcemap: false,
   },
   test: {
     environment: 'node',
