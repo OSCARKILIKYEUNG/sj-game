@@ -166,12 +166,20 @@ export class GameScene extends Phaser.Scene {
     if (this.phase === 'title' || this.phase === 'dead') return;
     if (paused) this.pauseReasons.add(reason);
     else this.pauseReasons.delete(reason);
+    this.applyPauseState();
+    this.syncPauseOverlay();
+  }
+
+  private applyPauseState(): void {
     if (this.pauseReasons.size > 0) {
       this.physics.world.pause();
+      this.time.paused = true;
+      this.tweens.pauseAll();
     } else {
       this.physics.world.resume();
+      this.time.paused = false;
+      this.tweens.resumeAll();
     }
-    this.syncPauseOverlay();
   }
 
   toggleManualPause(): void {
@@ -181,7 +189,7 @@ export class GameScene extends Phaser.Scene {
   resumeFromOverlay(): void {
     this.pauseReasons.delete('manual');
     this.pauseReasons.delete('background');
-    if (this.pauseReasons.size === 0) this.physics.world.resume();
+    this.applyPauseState();
     this.syncPauseOverlay();
   }
 
@@ -366,7 +374,7 @@ export class GameScene extends Phaser.Scene {
     (this.player.body as Phaser.Physics.Arcade.Body).setEnable(false);
     this.clearWorld();
     this.pauseReasons.clear();
-    this.physics.world.resume();
+    this.applyPauseState();
     this.syncPauseOverlay();
   }
 

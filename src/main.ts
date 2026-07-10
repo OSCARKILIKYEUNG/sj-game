@@ -62,7 +62,7 @@ resumeButton.addEventListener('click', (event) => {
 });
 
 document.addEventListener('visibilitychange', () => {
-  scene()?.setPause('background', document.hidden);
+  if (document.hidden) scene()?.setPause('background', true);
 });
 
 window.addEventListener('blur', () => scene()?.setPause('background', true));
