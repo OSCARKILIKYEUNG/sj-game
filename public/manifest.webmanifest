@@ -1,0 +1,10 @@
+{
+  "name": "Spidey Jump",
+  "short_name": "SJ Game",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f2ead6",
+  "theme_color": "#c92f32",
+  "description": "A personal hand-drawn superhero vertical jumper."
+}
