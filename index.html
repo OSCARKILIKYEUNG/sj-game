@@ -105,6 +105,51 @@ window.addEventListener('error', function(e){
   fit();
 
   // src/world.js
+  var ENDLESS_CFG = {
+    mode: "endless",
+    theme: "street",
+    boss: null,
+    // null boss = rotation
+    enemies: { thug: 5e3, cop: 8e3, hardhat: 12e3 },
+    // start heights
+    citizens: 4200,
+    gimmicks: { conveyor: 8e3, hook: 1e4 },
+    stor: ["cap", "sense", "hulk", "hawk"]
+  };
+  var LEVELS = [
+    {
+      level: 1,
+      name: "NEW YORK",
+      theme: "street",
+      boss: "sandman",
+      enemies: { thug: 1200 },
+      citizens: 2e3,
+      gimmicks: {},
+      stor: []
+    },
+    {
+      level: 2,
+      name: "CHICAGO",
+      theme: "site",
+      boss: "rhino",
+      enemies: { thug: 800, cop: 3e3, hardhat: 4500 },
+      citizens: 2e3,
+      gimmicks: { conveyor: 1500, hook: 5200 },
+      stor: ["cap"]
+    },
+    {
+      level: 3,
+      name: "EVERGLADES",
+      theme: "sewer",
+      boss: "lizard",
+      enemies: { thug: 800, cop: 2500, hardhat: 4e3, minion: 1500 },
+      citizens: 2e3,
+      gimmicks: { conveyor: 2500, hook: 5500, slime: 1200, vent: 3e3 },
+      stor: ["cap", "sense", "hawk"]
+    }
+  ];
+  var STORY_PLAYABLE = 2;
+  var STORY_BOSS_AT = 1e4;
   var GRAV = 2200;
   var BOUNCE = -820;
   var SPRINGV = -1350;
@@ -115,9 +160,6 @@ window.addEventListener('error', function(e){
   var GLIDE_CAP = 135;
   var BOSS_HP = 3;
   var MAX_LIVES = 3;
-  var ENEMY_START = 5e3;
-  var COP_START = 8e3;
-  var CITIZEN_START = 4200;
   var IRON_SPEED = 900;
   var IRON_DUR = 2.4;
   var STOR_START = 2600;
@@ -140,9 +182,22 @@ window.addEventListener('error', function(e){
   var TUT_STEP = 38;
   var TUT_N = 12;
   var TUT_LX = 186;
+  var MB_W = 224;
+  var MB_H = 46;
+  var SB_Y = 600;
+  var EB_Y = 654;
+  var MAP_CX = 240;
+  var MAP_CY = 250;
+  var MAP_PINS = [[402, 220], [305, 215], [378, 335], [205, 245], [135, 265], [75, 245]];
   var G = {
     state: "TITLE",
     paused: false,
+    mode: "endless",
+    level: 0,
+    cfg: ENDLESS_CFG,
+    storyCleared: 0,
+    postClear: false,
+    lastPad: null,
     t: 0,
     shake: 0,
     boilFrame: 0,
@@ -204,6 +259,10 @@ window.addEventListener('error', function(e){
   };
   try {
     G.best = parseInt(localStorage.getItem("sjBest") || "0", 10) || 0;
+  } catch (e) {
+  }
+  try {
+    G.storyCleared = parseInt(localStorage.getItem("sjStory") || "0", 10) || 0;
   } catch (e) {
   }
   function heightClimbed() {
@@ -517,6 +576,26 @@ window.addEventListener('error', function(e){
     inkPath(g, rng, [[5, 31], [21, 27], [5, 22], [21, 17], [6, 12]], { closed: false, fill: null, stroke: "#5c6068", lw: 2, jit: 0.6, rough: false });
     inkPath(g, rng, rrectPts(4, 4, 18, 5, 2), { fill: "#b9bdc4", stroke: "#5c6068", lw: 2, jit: 0.7 });
   });
+  bake("plat_conveyor", 76, 18, (g, rng, v) => {
+    inkPath(g, rng, rrectPts(4, 3, 68, 12, 6), { fill: "#8d939c", stroke: "#43474d", lw: 2.4, jit: 0.9 });
+    inkPath(g, rng, ellipsePts(10, 9, 4, 4, 0, 10), { fill: "#b9bdc4", stroke: "#43474d", lw: 1.6, jit: 0.4 });
+    inkPath(g, rng, ellipsePts(66, 9, 4, 4, 0, 10), { fill: "#b9bdc4", stroke: "#43474d", lw: 1.6, jit: 0.4 });
+    g.save();
+    g.globalAlpha = 0.9;
+    for (let i = 0; i < 4; i++) {
+      const cx = 18 + i * 12 + (v ? 6 : 0);
+      inkPath(g, rng, [[cx, 5.5], [cx + 6, 9], [cx, 12.5]], { closed: false, fill: null, stroke: "#f0c020", lw: 2.2, jit: 0.3, rough: false });
+    }
+    g.restore();
+  });
+  bake("plat_hook", 76, 24, (g, rng) => {
+    inkPath(g, rng, rrectPts(4, 9, 68, 12, 4), { fill: "#c8a06a", stroke: "#7a5a2e", lw: 2.4, jit: 1 });
+    for (let i = 1; i < 4; i++)
+      inkLine(g, rng, 4 + i * 17, 10, 4 + i * 17, 20, { stroke: "#a07d48", lw: 1.2, jit: 0.4, rough: false });
+    inkLine(g, rng, 10, 10, 38, 1, { stroke: "#54452f", lw: 1.8, jit: 0.4, rough: false });
+    inkLine(g, rng, 66, 10, 38, 1, { stroke: "#54452f", lw: 1.8, jit: 0.4, rough: false });
+    inkPath(g, rng, ellipsePts(38, 2, 3, 2.5, 0, 8), { fill: "#8d939c", stroke: "#43474d", lw: 1.4, jit: 0.3 });
+  });
   bake("it_web", 34, 30, (g, rng) => {
     inkPath(g, rng, rrectPts(5, 10, 24, 11, 4), { fill: "#8d939c", stroke: "#43474d", lw: 2.2, jit: 0.8 });
     inkPath(g, rng, ellipsePts(17, 15.5, 4.2, 4.2, 0, 10), { fill: RED, stroke: "#43474d", lw: 1.8, jit: 0.5 });
@@ -820,6 +899,8 @@ window.addEventListener('error', function(e){
     inkPath(g, rng, blobPts(rng, 6, 8, 3, 0.3, 7), { fill: SAND, stroke: SANDD, lw: 1.2, jit: 0.7 });
     sandSpeckles(g, rng, 11, 11, 10, 10, 5);
   });
+  var RSKIN = "#e0ac7d";
+  var RSKIND = "#a8783f";
   function drawRhino(g, rng, pose) {
     const lean = pose === "charge" ? 0.2 : pose === "tele" ? -0.07 : 0;
     g.save();
@@ -833,7 +914,7 @@ window.addEventListener('error', function(e){
         inkLine(g, rng, 2, 52 + i * 14, 20 + rng() * 8, 52 + i * 14, { stroke: "#8a8578", lw: 2, jit: 0.8, rough: false });
       g.restore();
     }
-    const foot = (x, y) => inkPath(g, rng, blobPts(rng, x, y, 5, 0.15, 8), { fill: RHG, stroke: RHD, lw: 2, jit: 0.6 });
+    const foot = (x, y) => inkPath(g, rng, blobPts(rng, x, y, 5, 0.15, 8), { fill: RHB, stroke: RHD, lw: 2, jit: 0.6 });
     if (pose === "charge") {
       limb(g, rng, [[40, 96], [26, 105], [18, 110]], RHG, 8);
       foot(16, 111);
@@ -842,10 +923,8 @@ window.addEventListener('error', function(e){
     } else {
       inkPath(g, rng, rrectPts(33, 94, 15, 17, 4), { fill: RHG, stroke: RHD, lw: 2.4, jit: 1 });
       inkPath(g, rng, rrectPts(57, 94, 15, 17, 4), { fill: RHG, stroke: RHD, lw: 2.4, jit: 1 });
-      inkLine(g, rng, 38, 108, 38, 112, { stroke: RHD, lw: 1.4, jit: 0.4, rough: false });
-      inkLine(g, rng, 43, 108, 43, 112, { stroke: RHD, lw: 1.4, jit: 0.4, rough: false });
-      inkLine(g, rng, 62, 108, 62, 112, { stroke: RHD, lw: 1.4, jit: 0.4, rough: false });
-      inkLine(g, rng, 67, 108, 67, 112, { stroke: RHD, lw: 1.4, jit: 0.4, rough: false });
+      inkLine(g, rng, 34, 101, 47, 101, { stroke: RHB, lw: 2, jit: 0.4, rough: false });
+      inkLine(g, rng, 58, 101, 71, 101, { stroke: RHB, lw: 2, jit: 0.4, rough: false });
     }
     if (pose === "charge") {
       limb(g, rng, [[34, 58], [52, 67], [66, 73]], RHG, 9);
@@ -858,15 +937,27 @@ window.addEventListener('error', function(e){
       { fill: RHG, stroke: RHD, lw: 2.8, jit: 1.4 }
     );
     g.save();
-    g.globalAlpha = 0.9;
-    inkPath(g, rng, [[30, 74], [54, 78], [78, 72]], { closed: false, fill: null, stroke: RHB, lw: 3.2, jit: 0.8, rough: false });
-    inkPath(g, rng, [[32, 82], [54, 86], [78, 80]], { closed: false, fill: null, stroke: RHB, lw: 3.2, jit: 0.8, rough: false });
-    inkPath(g, rng, [[34, 90], [54, 93], [76, 88]], { closed: false, fill: null, stroke: RHB, lw: 3.2, jit: 0.8, rough: false });
+    g.globalAlpha = 0.95;
+    inkPath(g, rng, [[26, 62], [52, 58], [78, 60]], { closed: false, fill: null, stroke: RHD, lw: 2.2, jit: 0.7, rough: false });
+    inkPath(g, rng, [[24, 74], [54, 78], [80, 72]], { closed: false, fill: null, stroke: RHD, lw: 2.2, jit: 0.7, rough: false });
+    inkPath(g, rng, [[27, 86], [54, 90], [78, 84]], { closed: false, fill: null, stroke: RHD, lw: 2.2, jit: 0.7, rough: false });
+    inkPath(g, rng, [[30, 68], [54, 70], [76, 66]], { closed: false, fill: null, stroke: RHB, lw: 3, jit: 0.8, rough: false });
+    inkPath(g, rng, [[31, 80], [54, 84], [76, 78]], { closed: false, fill: null, stroke: RHB, lw: 3, jit: 0.8, rough: false });
     g.restore();
-    inkPath(g, rng, [[26, 56], [34, 48], [46, 43]], { closed: false, fill: null, stroke: RHD, lw: 2, jit: 1, rough: false });
-    streaks(g, rng, 52, 68, 52, 40, RHD, 3);
+    g.save();
+    g.fillStyle = RHD;
+    g.globalAlpha = 0.8;
+    for (const [rx, ry] of [[32, 60], [46, 58.5], [64, 59], [30, 76], [48, 79], [70, 74], [36, 87.5], [58, 90], [72, 85]]) {
+      g.beginPath();
+      g.arc(rx, ry, 1.4, 0, TAU);
+      g.fill();
+    }
+    g.restore();
+    inkLine(g, rng, 30, 52, 72, 66, { stroke: "#54452f", lw: 3, jit: 0.6, rough: false });
+    inkPath(g, rng, blobPts(rng, 32, 48, 8, 0.12, 8), { fill: RHG, stroke: RHD, lw: 2.2, jit: 0.7 });
+    inkPath(g, rng, blobPts(rng, 70, 50, 8, 0.12, 8), { fill: RHG, stroke: RHD, lw: 2.2, jit: 0.7 });
     const fist = (x, y, r) => {
-      inkPath(g, rng, blobPts(rng, x, y, r, 0.15, 9), { fill: RHG, stroke: RHD, lw: 2.4, jit: 0.9 });
+      inkPath(g, rng, blobPts(rng, x, y, r, 0.15, 9), { fill: RHB, stroke: RHD, lw: 2.4, jit: 0.9 });
       inkPath(g, rng, [[x - r * 0.5, y - 2], [x + r * 0.5, y - 2]], { closed: false, fill: null, stroke: RHD, lw: 1.4, jit: 0.5, rough: false });
     };
     if (pose === "tele") {
@@ -891,21 +982,46 @@ window.addEventListener('error', function(e){
     inkPath(
       g,
       rng,
-      [[52, 44], [50, 30], [60, 22], [76, 22], [90, 28], [96, 38], [92, 46], [72, 48]],
+      [[52, 44], [50, 28], [58, 20], [76, 19], [90, 26], [96, 38], [92, 46], [72, 48]],
       { fill: RHG, stroke: RHD, lw: 2.6, jit: 1.1 }
     );
+    inkPath(g, rng, [[54, 30], [66, 23], [82, 23]], { closed: false, fill: null, stroke: RHB, lw: 2.4, jit: 0.6, rough: false });
+    g.fillStyle = RHD;
+    g.beginPath();
+    g.arc(58, 26, 1.3, 0, TAU);
+    g.fill();
+    g.beginPath();
+    g.arc(72, 21.5, 1.3, 0, TAU);
+    g.fill();
     inkPath(g, rng, [[74, 24], [92, 4], [84, 26]], { fill: "#efe9d8", stroke: "#8a8578", lw: 2.2, jit: 0.8 });
     inkPath(g, rng, [[62, 25], [68, 16], [70, 26]], { fill: "#efe9d8", stroke: "#8a8578", lw: 1.8, jit: 0.6 });
-    inkPath(g, rng, ellipsePts(52, 26, 4, 5, 0.3, 8), { fill: RHG, stroke: RHD, lw: 1.8, jit: 0.6 });
-    inkLine(g, rng, 58, 28, 68, 31, { lw: 2.4, jit: 0.4, rough: false });
+    inkPath(
+      g,
+      rng,
+      [[60, 30], [88, 30], [90, 42], [84, 47], [64, 46], [58, 40]],
+      { fill: RSKIN, stroke: RSKIND, lw: 1.8, jit: 0.6 }
+    );
+    inkLine(g, rng, 62, 33, 72, 34.5, { lw: 2.4, jit: 0.3, rough: false });
+    inkLine(g, rng, 84, 34.5, 76, 34.5, { lw: 2, jit: 0.3, rough: false });
     g.fillStyle = INK;
     g.beginPath();
-    g.arc(64, 33, 2, 0, TAU);
+    g.arc(68, 36.5, 1.8, 0, TAU);
     g.fill();
     g.beginPath();
-    g.arc(90, 40, 1.6, 0, TAU);
+    g.arc(80, 36.5, 1.6, 0, TAU);
     g.fill();
-    inkLine(g, rng, 84, 45, 90, 43, { lw: 1.6, jit: 0.4, rough: false });
+    inkLine(g, rng, 73, 37, 74.5, 41, { stroke: RSKIND, lw: 1.4, jit: 0.3, rough: false });
+    inkPath(g, rng, [[66, 43.5], [74, 44.5], [82, 43]], { closed: false, fill: null, lw: 2, jit: 0.3, rough: false });
+    g.save();
+    g.fillStyle = RSKIND;
+    g.globalAlpha = 0.5;
+    for (let i = 0; i < 6; i++) {
+      g.beginPath();
+      g.arc(64 + rng() * 20, 44 + rng() * 2.5, 0.6, 0, TAU);
+      g.fill();
+    }
+    g.restore();
+    inkPath(g, rng, [[58, 42], [64, 48], [84, 48], [92, 44]], { closed: false, fill: null, stroke: RHD, lw: 2, jit: 0.5, rough: false });
     if (pose === "tele") {
       g.save();
       g.globalAlpha = 0.85;
@@ -921,7 +1037,7 @@ window.addEventListener('error', function(e){
   ["idle", "tele", "charge", "dizzy"].forEach((p) => bake("rh_" + p, 104, 116, (g, rng) => drawRhino(g, rng, p)));
   var SKIN = "#e8b98a";
   var SKIND = "#a8783f";
-  function drawThug(g, rng, pose) {
+  function drawThug(g, rng, pose, hard) {
     const lunge = pose === "lunge";
     const SHIRT = "#d8d2c4", STRIPE = "#3a3631", PANTS = "#4a4f5a";
     const shoe = (x, y) => inkPath(g, rng, ellipsePts(x, y, 4, 2.6, 0, 8), { fill: "#2f2b26", lw: 1.4, jit: 0.4 });
@@ -951,7 +1067,19 @@ window.addEventListener('error', function(e){
     limb(g, rng, [[14, 23], [9, 29], [8, 35]], SHIRT, 3.4);
     inkPath(g, rng, blobPts(rng, 8, 37, 2.6, 0.15, 7), { fill: SKIN, lw: 1.4, jit: 0.4 });
     inkPath(g, rng, ellipsePts(22, 12, 9, 8.5, 0, 14), { fill: SKIN, stroke: SKIND, lw: 2, jit: 0.6 });
-    inkPath(g, rng, [[13, 8], [31, 8], [30, 2], [14, 2]], { fill: "#3a3631", stroke: INK, lw: 1.8, jit: 0.7 });
+    if (hard) {
+      g.save();
+      g.globalAlpha = 0.9;
+      inkPath(g, rng, [[15, 21], [29, 21], [28.5, 34], [15.5, 34]], { fill: "#e8862c", stroke: "#9c5314", lw: 1.8, jit: 0.6 });
+      inkLine(g, rng, 18.5, 22, 18.5, 33, { stroke: "#cfd4dc", lw: 2, jit: 0.3, rough: false });
+      inkLine(g, rng, 25.5, 22, 25.5, 33, { stroke: "#cfd4dc", lw: 2, jit: 0.3, rough: false });
+      g.restore();
+      inkPath(g, rng, [[12, 7], [14, 1.5], [22, -0.5], [30, 1.5], [32, 7]], { fill: "#f0c020", stroke: "#9c7a10", lw: 2, jit: 0.6 });
+      inkPath(g, rng, [[10, 8.5], [34, 8.5], [34, 6.5], [10, 6.5]], { fill: "#f0c020", stroke: "#9c7a10", lw: 1.5, jit: 0.4 });
+      inkLine(g, rng, 22, 0.5, 22, 6, { stroke: "#9c7a10", lw: 1.2, jit: 0.3, rough: false });
+    } else {
+      inkPath(g, rng, [[13, 8], [31, 8], [30, 2], [14, 2]], { fill: "#3a3631", stroke: INK, lw: 1.8, jit: 0.7 });
+    }
     inkPath(g, rng, [[13, 10], [31, 10], [30, 15], [14, 15]], { fill: "#2a2620", stroke: null, jit: 0.6 });
     g.fillStyle = "#fff";
     g.beginPath();
@@ -964,6 +1092,14 @@ window.addEventListener('error', function(e){
   }
   bake("thug_idle", 44, 54, (g, rng) => drawThug(g, rng, "idle"));
   bake("thug_lunge", 58, 54, (g, rng) => drawThug(g, rng, "lunge"));
+  bake("hard_idle", 44, 56, (g, rng) => {
+    g.translate(0, 2);
+    drawThug(g, rng, "idle", true);
+  });
+  bake("hard_lunge", 58, 56, (g, rng) => {
+    g.translate(0, 2);
+    drawThug(g, rng, "lunge", true);
+  });
   function drawCop(g, rng, pose) {
     const NAVY = "#2e4a86", NAVYD = "#1b2f59";
     const aim = pose === "aim";
@@ -1138,6 +1274,178 @@ window.addEventListener('error', function(e){
     }
     g.restore();
   }, 1);
+  bake("site_far", 480, 150, (g, rng) => {
+    g.save();
+    for (const cx of [70, 250, 400]) {
+      const h = 70 + rng() * 50;
+      inkLine(g, rng, cx, 150, cx, 150 - h, { stroke: "#9c7f66", lw: 2.4, jit: 0.8, rough: false });
+      inkLine(g, rng, cx - 44, 150 - h + 8, cx + 62, 150 - h, { stroke: "#9c7f66", lw: 2, jit: 0.7, rough: false });
+      inkLine(g, rng, cx, 150 - h - 8, cx + 58, 150 - h, { stroke: "#9c7f66", lw: 1.2, jit: 0.5, rough: false });
+      inkLine(g, rng, cx + 44, 150 - h, cx + 44, 150 - h + 26 + rng() * 16, { stroke: "#7a6350", lw: 1.1, jit: 0.3, rough: false });
+    }
+    let x = 10;
+    while (x < 460) {
+      const w = 60 + rng() * 60, h = 30 + rng() * 60;
+      inkPath(
+        g,
+        rng,
+        [[x, 150], [x, 150 - h], [x + w, 150 - h], [x + w, 150]],
+        { closed: false, fill: "rgba(190,150,110,.18)", stroke: "#b08a60", lw: 1.4, jit: 1 }
+      );
+      for (let i = 1; i < 3; i++) inkLine(g, rng, x, 150 - h * i / 3, x + w, 150 - h * i / 3, { stroke: "#b08a60", lw: 0.9, jit: 0.5, rough: false });
+      x += w + 14 + rng() * 20;
+    }
+    g.restore();
+  }, 1);
+  bake("site_near", 480, 220, (g, rng) => {
+    g.save();
+    const cols = [40, 150, 260, 370, 460];
+    for (const cx of cols)
+      inkLine(g, rng, cx, 220, cx, 0, { stroke: "#7d6a52", lw: 5, jit: 0.8, rough: false });
+    for (let fy = 30; fy < 220; fy += 62) {
+      inkLine(g, rng, 10, fy, 475, fy, { stroke: "#7d6a52", lw: 4, jit: 0.8, rough: false });
+      g.save();
+      g.globalAlpha = 0.55;
+      for (let i = 0; i < cols.length - 1; i++)
+        inkLine(g, rng, cols[i], fy + 58, cols[i + 1], fy + 4, { stroke: "#9c8568", lw: 1.8, jit: 0.7, rough: false });
+      g.restore();
+      g.save();
+      g.fillStyle = "#54452f";
+      g.globalAlpha = 0.7;
+      for (let rx = 24; rx < 470; rx += 34) {
+        g.beginPath();
+        g.arc(rx + rng() * 8, fy, 1.5, 0, TAU);
+        g.fill();
+      }
+      g.restore();
+    }
+    inkPath(g, rng, rrectPts(180, 96, 92, 20, 3), { fill: "#f0c020", stroke: "#43474d", lw: 2, jit: 0.7 });
+    g.save();
+    g.strokeStyle = "#43474d";
+    g.lineWidth = 5;
+    g.globalAlpha = 0.8;
+    for (let sx = 188; sx < 268; sx += 16) {
+      g.beginPath();
+      g.moveTo(sx, 114);
+      g.lineTo(sx + 9, 98);
+      g.stroke();
+    }
+    g.restore();
+    g.restore();
+  }, 1);
+  bake("sitehook", 56, 96, (g, rng) => {
+    for (let y = 4; y < 60; y += 9)
+      inkPath(g, rng, ellipsePts(28, y, 3.4, 5, 0, 8), { fill: null, stroke: "#54504a", lw: 2.2, jit: 0.4 });
+    inkPath(
+      g,
+      rng,
+      [[20, 62], [36, 62], [34, 74], [30, 80], [24, 82], [19, 77], [18, 70]],
+      { fill: "#8d939c", stroke: "#43474d", lw: 2.4, jit: 0.7 }
+    );
+    inkPath(g, rng, ellipsePts(27, 72, 5, 6, 0, 10), { fill: "#f9f6ec", stroke: "#43474d", lw: 2, jit: 0.5 });
+  }, 1);
+  bake("sitesign", 84, 62, (g, rng) => {
+    inkLine(g, rng, 20, 44, 16, 60, { stroke: "#54504a", lw: 2.4, jit: 0.5, rough: false });
+    inkLine(g, rng, 64, 44, 68, 60, { stroke: "#54504a", lw: 2.4, jit: 0.5, rough: false });
+    inkPath(g, rng, rrectPts(4, 4, 76, 40, 3), { fill: "#f0c020", stroke: "#43474d", lw: 2.4, jit: 0.9 });
+    g.fillStyle = "#43474d";
+    g.font = '700 13px "Segoe Print","Comic Sans MS",cursive';
+    g.textAlign = "center";
+    g.textBaseline = "middle";
+    g.fillText("SITE B", 42, 17);
+    g.font = '700 9px "Segoe Print","Comic Sans MS",cursive';
+    g.fillText("HARD HATS ONLY", 42, 33);
+  }, 1);
+  bake("usmap", 440, 260, (g, rng) => {
+    const outline = [
+      [30, 70],
+      [120, 62],
+      [240, 58],
+      [252, 74],
+      [272, 86],
+      [292, 68],
+      [340, 62],
+      [396, 50],
+      [402, 66],
+      [390, 84],
+      [385, 100],
+      [376, 120],
+      [368, 138],
+      [376, 158],
+      [364, 176],
+      [352, 190],
+      [360, 212],
+      [372, 238],
+      [356, 232],
+      [344, 206],
+      [330, 196],
+      [300, 196],
+      [268, 204],
+      [255, 228],
+      [240, 206],
+      [228, 190],
+      [188, 186],
+      [140, 178],
+      [108, 166],
+      [92, 152],
+      [66, 142],
+      [50, 118],
+      [38, 96]
+    ];
+    inkPath(g, rng, outline, { fill: "rgba(214,200,168,.55)", stroke: "#6b5a42", lw: 2.6, jit: 1.6 });
+    g.save();
+    g.globalAlpha = 0.3;
+    inkLine(g, rng, 150, 66, 148, 180, { stroke: "#8a7358", lw: 1, jit: 0.8, rough: false });
+    inkLine(g, rng, 230, 62, 232, 196, { stroke: "#8a7358", lw: 1, jit: 0.8, rough: false });
+    inkLine(g, rng, 60, 120, 226, 128, { stroke: "#8a7358", lw: 1, jit: 0.8, rough: false });
+    inkLine(g, rng, 300, 70, 296, 194, { stroke: "#8a7358", lw: 1, jit: 0.8, rough: false });
+    g.restore();
+    inkPath(g, rng, ellipsePts(36, 226, 14, 14, 0, 12), { fill: null, stroke: "#6b5a42", lw: 1.6, jit: 0.6 });
+    inkLine(g, rng, 36, 214, 36, 238, { stroke: "#6b5a42", lw: 1.4, jit: 0.4, rough: false });
+    inkLine(g, rng, 24, 226, 48, 226, { stroke: "#6b5a42", lw: 1.4, jit: 0.4, rough: false });
+    g.fillStyle = "#6b5a42";
+    g.font = '700 10px "Segoe Print","Comic Sans MS",cursive';
+    g.textAlign = "center";
+    g.fillText("N", 36, 210);
+  }, 1);
+  bake("face_sandman", 34, 34, (g, rng) => {
+    inkPath(g, rng, ellipsePts(17, 19, 12, 11, 0, 14), { fill: SAND, stroke: SANDD, lw: 2, jit: 0.7 });
+    inkPath(g, rng, [[6, 11], [28, 11], [27, 5], [7, 5]], { fill: "#a5763d", stroke: "#6d4a20", lw: 1.8, jit: 0.7 });
+    inkLine(g, rng, 9, 15, 14, 17.5, { lw: 1.8, jit: 0.3, rough: false });
+    inkLine(g, rng, 25, 15, 20, 17.5, { lw: 1.8, jit: 0.3, rough: false });
+    g.fillStyle = INK;
+    g.beginPath();
+    g.arc(12.5, 20, 1.7, 0, TAU);
+    g.fill();
+    g.beginPath();
+    g.arc(21.5, 20, 1.7, 0, TAU);
+    g.fill();
+    inkPath(g, rng, [[11, 26], [17, 24], [23, 26]], { closed: false, fill: null, lw: 1.8, jit: 0.3, rough: false });
+    sandSpeckles(g, rng, 17, 19, 20, 16, 6);
+  });
+  bake("face_rhino", 34, 34, (g, rng) => {
+    inkPath(
+      g,
+      rng,
+      [[5, 16], [7, 7], [15, 3], [24, 4], [30, 10], [31, 18], [28, 26], [8, 26]],
+      { fill: RHG, stroke: RHD, lw: 2, jit: 0.7 }
+    );
+    inkPath(g, rng, [[14, 6], [19, -2], [21, 7]], { fill: "#efe9d8", stroke: "#8a8578", lw: 1.6, jit: 0.5 });
+    inkPath(g, rng, [[10, 15], [26, 15], [27, 24], [22, 28], [13, 28], [9, 23]], { fill: RSKIN, stroke: RSKIND, lw: 1.6, jit: 0.5 });
+    inkLine(g, rng, 11, 18, 17, 19, { lw: 1.8, jit: 0.3, rough: false });
+    inkLine(g, rng, 25, 19, 20, 19, { lw: 1.6, jit: 0.3, rough: false });
+    g.fillStyle = INK;
+    g.beginPath();
+    g.arc(14.5, 21, 1.5, 0, TAU);
+    g.fill();
+    g.beginPath();
+    g.arc(22, 21, 1.4, 0, TAU);
+    g.fill();
+    inkPath(g, rng, [[13, 25.5], [18, 26.5], [23, 25]], { closed: false, fill: null, lw: 1.6, jit: 0.3, rough: false });
+  });
+  bake("face_q", 34, 34, (g, rng) => {
+    inkPath(g, rng, ellipsePts(17, 17, 13, 13, 0, 14), { fill: "#d9d2c0", stroke: "#8a8578", lw: 2, jit: 0.7 });
+  });
   bake("watertower", 64, 84, (g, rng) => {
     inkLine(g, rng, 16, 82, 22, 52, { stroke: "#54452f", lw: 2.4, jit: 0.7, rough: false });
     inkLine(g, rng, 48, 82, 42, 52, { stroke: "#54452f", lw: 2.4, jit: 0.7, rough: false });
@@ -1321,12 +1629,13 @@ window.addEventListener('error', function(e){
       kind,
       p,
       x: p.x,
-      y: p.y - (kind === "cop" ? 28 : kind === "thug" ? 27 : 26),
+      y: p.y - (kind === "cop" ? 28 : kind === "citizen" ? 26 : 27),
       dir: 1,
       st: "idle",
       stT: 0,
       off: 0,
       lungeDir: 1,
+      shoveX: 0,
       cd: 1 + Math.random() * 1.5,
       webT: 0,
       stunT: 0,
@@ -1334,6 +1643,7 @@ window.addEventListener('error', function(e){
       dead: false
     });
   }
+  var thuggish = (e) => e.kind === "thug" || e.kind === "hardhat";
   function killThug(e, label) {
     e.dead = true;
     G.bonus += 150;
@@ -1359,7 +1669,7 @@ window.addEventListener('error', function(e){
       if (e.dead || e.kind === "citizen") continue;
       const ey = e.y - G.cam.y;
       if (ey < -40 || ey > H + 40) continue;
-      if (e.kind === "thug") {
+      if (thuggish(e)) {
         killThug(e, "SMASHED!");
       } else {
         e.dead = true;
@@ -1391,8 +1701,8 @@ window.addEventListener('error', function(e){
       e.stT += dt;
       if (e.webT > 0) e.webT -= dt;
       if (e.stunT > 0) e.stunT -= dt;
-      const baseY = e.p.y - (e.kind === "cop" ? 28 : e.kind === "thug" ? 27 : 26);
-      if (e.kind === "thug") {
+      const baseY = e.p.y - (e.kind === "cop" ? 28 : e.kind === "citizen" ? 26 : 27);
+      if (thuggish(e)) {
         if (e.st !== "lunge") e.dir = player.x > e.x ? 1 : -1;
         if (e.webT > 0) {
           e.st = "idle";
@@ -1421,7 +1731,7 @@ window.addEventListener('error', function(e){
             e.cd = 1.6 + Math.random() * 1.4;
           }
         }
-        e.x = e.p.x + e.off;
+        e.x = e.p.x + e.off + e.shoveX;
         e.y = baseY;
       } else if (e.kind === "cop") {
         e.x = e.p.x;
@@ -1478,6 +1788,16 @@ window.addEventListener('error', function(e){
             killThug(e, "STOMP!");
             player.vy = -880;
             player.squash = 0.25;
+          } else if (e.kind === "hardhat") {
+            player.vy = -880;
+            player.squash = 0.25;
+            e.shoveX += (player.x < e.x ? 1 : -1) * 30;
+            sfx.thud();
+            if (Math.abs(e.off + e.shoveX) > e.p.w / 2 + 4) {
+              killThug(e, "SHOVED OFF!");
+            } else {
+              G.floats.push({ x: e.x, y: e.y - 44, text: "CLANG!", life: 0.8, size: 14, color: "#8a8578" });
+            }
           } else {
             player.vy = -820;
             player.squash = 0.22;
@@ -1488,8 +1808,8 @@ window.addEventListener('error', function(e){
             G.floats.push({ x: e.x, y: e.y - 46, text: "NOT THE COPS!", life: 1, size: 13, color: "#8a8578" });
           }
         } else if (G.respawnInv <= 0 && !G.ironCarry) {
-          const harmful = e.kind === "thug" && e.st === "lunge" && e.webT <= 0;
-          const r = e.kind === "thug" ? 22 : 20;
+          const harmful = thuggish(e) && e.st === "lunge" && e.webT <= 0;
+          const r = thuggish(e) ? 22 : 20;
           if (Math.hypot(player.x - e.x, player.y - e.y) < r + player.r * 0.8) {
             if (harmful) {
               damage();
@@ -1540,6 +1860,11 @@ window.addEventListener('error', function(e){
     if (type === "moving") {
       p.vx = (50 + 115 * diffT(heightClimbed() || -G.genY)) * (Math.random() < 0.5 ? -1 : 1);
     }
+    if (type === "conveyor") p.beltDir = Math.random() < 0.5 ? -1 : 1;
+    if (type === "hook") {
+      p.ax = p.x;
+      p.phase = Math.random() * TAU;
+    }
     G.platforms.push(p);
     return p;
   }
@@ -1559,6 +1884,12 @@ window.addEventListener('error', function(e){
         if (r < 0.06 + 0.3 * dt_) type = "moving";
         else if (r < 0.06 + 0.3 * dt_ + (G.lastSafeCrumble ? 0 : 0.04 + 0.16 * dt_)) type = "crumble";
       }
+      const GM = G.cfg.gimmicks;
+      if (type === "normal" && !early) {
+        const rg = R();
+        if (GM.conveyor != null && h > GM.conveyor && rg < 0.14) type = "conveyor";
+        else if (GM.hook != null && h > GM.hook && rg < 0.24) type = "hook";
+      }
       G.lastSafeCrumble = type === "crumble";
       const p = addPlatform(x, G.genY, type);
       G.lastSafeX = x;
@@ -1574,18 +1905,21 @@ window.addEventListener('error', function(e){
         }
         G.itemNextH = h + 850 + R() * 650;
       }
-      if (h > STOR_START && h > G.storNextH && type === "normal" && !p.spring && !p.item) {
-        const r3 = R();
-        p.item = { kind: r3 < 0.25 ? "cap" : r3 < 0.5 ? "sense" : r3 < 0.75 ? "hulk" : "hawk", amt: 0 };
+      if (G.cfg.stor.length && h > STOR_START && h > G.storNextH && type === "normal" && !p.spring && !p.item) {
+        p.item = { kind: G.cfg.stor[Math.floor(R() * G.cfg.stor.length)], amt: 0 };
         G.storNextH = h + 2200 + R() * 1800;
       }
-      if (h > ENEMY_START && h > G.enemyNextH && type !== "crumble" && !p.spring && !p.item) {
-        const wantCop = h > COP_START && R() < 0.38;
-        if (wantCop && type === "normal") spawnEnemy("cop", p);
-        else spawnEnemy("thug", p);
+      const EN = G.cfg.enemies;
+      if (EN.thug != null && h > EN.thug && h > G.enemyNextH && type !== "crumble" && type !== "hook" && !p.spring && !p.item) {
+        const kinds = ["thug"];
+        if (EN.hardhat != null && h > EN.hardhat) kinds.push("hardhat");
+        if (EN.minion != null && h > EN.minion) kinds.push("minion");
+        let kind = kinds[Math.floor(R() * kinds.length)];
+        if (EN.cop != null && h > EN.cop && type === "normal" && R() < 0.38) kind = "cop";
+        spawnEnemy(kind, p);
         G.enemyNextH = h + 340 + R() * 460 - 160 * dt_;
       }
-      if (h > CITIZEN_START && h > G.citizenNextH && type === "normal" && !p.spring && !p.item && !p.enemy) {
+      if (h > G.cfg.citizens && h > G.citizenNextH && type === "normal" && !p.spring && !p.item && !p.enemy) {
         spawnEnemy("citizen", p);
         G.citizenNextH = h + 1500 + R() * 1600;
       }
@@ -1612,7 +1946,7 @@ window.addEventListener('error', function(e){
         G.webDoodadNext = G.genY - 2400 - R() * 1500;
       }
       if (G.genY < G.roofDoodadNext) {
-        const key = R() < 0.55 ? "watertower" : "billboard";
+        const key = G.cfg.theme === "site" ? R() < 0.5 ? "sitehook" : "sitesign" : R() < 0.55 ? "watertower" : "billboard";
         G.clouds.push({
           key,
           x: 60 + R() * (W - 120),
@@ -1659,7 +1993,7 @@ window.addEventListener('error', function(e){
     G.bonus = 0;
     G.newBest = false;
     G.milestone = 5e3;
-    G.nextBossAt = 1e4;
+    G.nextBossAt = STORY_BOSS_AT;
     G.bossCount = 0;
     G.webAmmo = 2;
     G.glideAmmo = 2;
@@ -1676,6 +2010,8 @@ window.addEventListener('error', function(e){
     G.senseT = 0;
     G.hulkT = 0;
     G.arrows = [];
+    G.postClear = false;
+    G.lastPad = null;
     G.cam.y = -(H - 160);
     G.genY = 46;
     G.lastSafeX = W / 2;
@@ -1698,11 +2034,37 @@ window.addEventListener('error', function(e){
       G.glideAmmo = 8;
     }
   }
-  function startGame() {
+  function saveStory() {
+    try {
+      localStorage.setItem("sjStory", "" + G.storyCleared);
+    } catch (e) {
+    }
+  }
+  function startEndless() {
+    G.mode = "endless";
+    G.level = 0;
+    G.cfg = ENDLESS_CFG;
     resetGame();
     G.state = "PLAY";
     G.stateT = 0;
     G.paused = false;
+  }
+  function startGame() {
+    startEndless();
+  }
+  function startLevel(n) {
+    if (n < 1 || n > STORY_PLAYABLE || n > G.storyCleared + 1) return;
+    G.mode = "story";
+    G.level = n;
+    G.cfg = LEVELS[n - 1];
+    resetGame();
+    G.state = "PLAY";
+    G.stateT = 0;
+    G.paused = false;
+  }
+  function restartRun() {
+    if (G.mode === "story" && G.level >= 1) startLevel(G.level);
+    else startEndless();
   }
   function debugJumpTo(h) {
     G.player.y = -h;
@@ -1722,10 +2084,20 @@ window.addEventListener('error', function(e){
     G.zip = null;
     G.touchState = null;
     if (G.state === "BOSS" || G.state === "BOSSINTRO" || G.state === "BOSSWIN") {
-      G.player.x = W / 2;
-      G.player.y = G.cam.y + 520;
+      const pads = G.platforms.filter((q) => q.arena && !q.dead);
+      let pad = G.lastPad && !G.lastPad.dead && G.lastPad.arena ? G.lastPad : null;
+      if (!pad && pads.length)
+        pad = pads.reduce((a, b2) => Math.hypot(b2.x - G.player.x, b2.y - G.player.y) < Math.hypot(a.x - G.player.x, a.y - G.player.y) ? b2 : a);
+      if (pad) {
+        G.player.x = pad.x;
+        G.player.y = pad.y - 26;
+        G.lastPad = pad;
+      } else {
+        G.player.x = W / 2;
+        G.player.y = G.cam.y + 520;
+      }
       G.player.vx = 0;
-      G.player.vy = -500;
+      G.player.vy = BOUNCE;
       G.player.pose = "fall";
       G.globs = [];
       G.respawnInv = 2;
@@ -1773,22 +2145,29 @@ window.addEventListener('error', function(e){
   }
   function gameOver() {
     if (G.state === "DEAD") return;
+    G.gliding = false;
+    G.zip = null;
+    G.ironCarry = null;
+    G.touchState = null;
+    if (G.mode === "story" && G.postClear && G.level < 3) {
+      G.state = "CLEAR";
+      G.stateT = 0;
+      return;
+    }
     G.state = "DEAD";
     G.stateT = 0;
     G.deadT = 0;
     sfx.die();
     G.shake = 10;
-    G.gliding = false;
-    G.zip = null;
-    G.ironCarry = null;
-    G.touchState = null;
-    const s = score();
-    if (s > G.best) {
-      G.best = s;
-      G.newBest = true;
-      try {
-        localStorage.setItem("sjBest", "" + G.best);
-      } catch (e) {
+    if (G.mode === "endless") {
+      const s = score();
+      if (s > G.best) {
+        G.best = s;
+        G.newBest = true;
+        try {
+          localStorage.setItem("sjBest", "" + G.best);
+        } catch (e) {
+        }
       }
     }
   }
@@ -1796,7 +2175,7 @@ window.addEventListener('error', function(e){
     G.state = "BOSSINTRO";
     G.stateT = 0;
     G.respawnInv = 0;
-    G.bossKind = G.bossCount % 2 === 0 ? "sandman" : "rhino";
+    G.bossKind = G.mode === "story" && !G.postClear && G.cfg.boss ? G.cfg.boss : G.bossCount % 2 === 0 ? "sandman" : "rhino";
     const loop = Math.floor(G.bossCount / 2);
     for (const p of G.platforms) if (p.y < G.cam.y + H + 60) p.dead = true;
     G.platforms = G.platforms.filter((p) => !p.dead);
@@ -1852,6 +2231,19 @@ window.addEventListener('error', function(e){
     G.globs = [];
     G.nextBossAt = score() + 1e4;
     G.bossCount++;
+    if (G.mode === "story" && !G.postClear) {
+      if (G.level > G.storyCleared) {
+        G.storyCleared = G.level;
+        saveStory();
+      }
+      try {
+        const k = "sjStoryBest" + G.level;
+        const prev = parseInt(localStorage.getItem(k) || "0", 10) || 0;
+        if (score() > prev) localStorage.setItem(k, "" + score());
+      } catch (e) {
+      }
+      G.postClear = true;
+    }
     sfx.win();
   }
   function togglePause() {
@@ -2182,7 +2574,7 @@ window.addEventListener('error', function(e){
       f.y -= 34 * dt;
       if (f.life <= 0) G.floats.splice(i, 1);
     }
-    if (G.state === "TITLE" || G.state === "DEAD" || G.state === "TUTOR") {
+    if (G.state === "TITLE" || G.state === "DEAD" || G.state === "TUTOR" || G.state === "MAP" || G.state === "CLEAR") {
       if (G.state === "DEAD") {
         G.deadT += dt;
         G.player.spin += 9 * dt;
@@ -2300,6 +2692,8 @@ window.addEventListener('error', function(e){
           p.x = W - 48;
           p.vx *= -1;
         }
+      } else if (p.type === "hook") {
+        p.x = p.ax + Math.sin(G.t * 1.3 + p.phase) * 46;
       }
       if (p.sprT > 0) p.sprT -= dt;
       if (!G.zip && !G.ironCarry && player.vy > 0 && !p.dead) {
@@ -2332,7 +2726,11 @@ window.addEventListener('error', function(e){
               player.vy = BOUNCE;
               sfx.boing();
               player.squash = 0.22;
+              if (p.type === "conveyor") {
+                player.vx = clamp(player.vx + p.beltDir * 300, -MAXVX, MAXVX);
+              }
             }
+            if (p.type !== "crumble") G.lastPad = p;
             G.gliding = false;
             G.parts.push({ x: player.x, y: p.y + 2, vx: -40, vy: -20, life: 0.3, type: "puff", size: 5, rot: 0, vr: 0, color: "#cfc9b8" });
             G.parts.push({ x: player.x, y: p.y + 2, vx: 40, vy: -20, life: 0.3, type: "puff", size: 5, rot: 0, vr: 0, color: "#cfc9b8" });
@@ -2412,9 +2810,14 @@ window.addEventListener('error', function(e){
       if (G.boss) bossCollide();
     } else if (G.state === "BOSSWIN") {
       if (G.stateT > 1.8) {
-        G.state = "PLAY";
-        for (const p of G.platforms) p.arena = false;
-        G.genY = Math.max(G.genY, G.cam.y + 300);
+        if (G.mode === "story" && G.postClear && G.level < 3) {
+          G.state = "CLEAR";
+          G.stateT = 0;
+        } else {
+          G.state = "PLAY";
+          for (const p of G.platforms) p.arena = false;
+          G.genY = Math.max(G.genY, G.cam.y + 300);
+        }
       }
     }
     for (let i = G.globs.length - 1; i >= 0; i--) {
@@ -2438,7 +2841,7 @@ window.addEventListener('error', function(e){
       for (const e of G.enemies) {
         if (e.dead || e.kind === "citizen") continue;
         if (Math.abs(e.x - a.x) < 22 && Math.abs(e.y - a.y) < 26) {
-          if (e.kind === "thug") {
+          if (e.kind === "thug" || e.kind === "hardhat") {
             killThug(e, "ARROW!");
           } else {
             e.stunT = 3;
@@ -2541,24 +2944,53 @@ window.addEventListener('error', function(e){
     }
     return false;
   }
+  function titleHit(x, y) {
+    if (inRect(x, y, TB_X - 10, TB_Y - 8, TB_W + 20, TB_H + 16)) {
+      G.state = "TUTOR";
+      return;
+    }
+    if (inRect(x, y, 240 - MB_W / 2 - 8, SB_Y - 6, MB_W + 16, MB_H + 12)) {
+      G.state = "MAP";
+      return;
+    }
+    if (inRect(x, y, 240 - MB_W / 2 - 8, EB_Y - 6, MB_W + 16, MB_H + 12)) {
+      startEndless();
+      return;
+    }
+  }
+  function mapHit(x, y) {
+    if (inCircle(x, y, 36, 42, 32)) {
+      G.state = "TITLE";
+      return;
+    }
+    for (let i = 0; i < MAP_PINS.length; i++) {
+      if (inCircle(x, y, MAP_PINS[i][0], MAP_PINS[i][1], 32)) {
+        startLevel(i + 1);
+        return;
+      }
+    }
+  }
   cv.addEventListener("touchstart", (e) => {
     e.preventDefault();
     ensureAudio();
     if (G.state === "TITLE") {
-      const [x, y] = touchPos(e.changedTouches[0]);
-      if (inRect(x, y, TB_X - 10, TB_Y - 8, TB_W + 20, TB_H + 16)) {
-        G.state = "TUTOR";
-        return;
-      }
-      startGame();
+      titleHit(...touchPos(e.changedTouches[0]));
       return;
     }
     if (G.state === "TUTOR") {
       tutorHit(...touchPos(e.changedTouches[0]));
       return;
     }
+    if (G.state === "MAP") {
+      mapHit(...touchPos(e.changedTouches[0]));
+      return;
+    }
+    if (G.state === "CLEAR") {
+      G.state = "MAP";
+      return;
+    }
     if (G.state === "DEAD") {
-      if (G.deadT > 0.6) startGame();
+      if (G.deadT > 0.6) restartRun();
       return;
     }
     for (const t of e.changedTouches) {
@@ -2615,17 +3047,27 @@ window.addEventListener('error', function(e){
     if (e.code === "ArrowRight" || e.code === "KeyD") G.keys.r = true;
     if (e.code === "Space") {
       ensureAudio();
-      if (G.state === "TITLE") startGame();
-      else if (G.state === "DEAD" && G.deadT > 0.6) startGame();
+      if (G.state === "TITLE") startEndless();
+      else if (G.state === "DEAD" && G.deadT > 0.6) restartRun();
       else if (G.state === "TUTOR") G.state = "TITLE";
-      else useStored();
+      else if (G.state === "CLEAR") G.state = "MAP";
+      else if (G.state === "MAP") {
+      } else useStored();
       e.preventDefault();
     }
     if (e.code === "KeyE") useStored();
     if (e.code === "KeyH" && G.state === "TITLE") G.state = "TUTOR";
-    if (e.code === "Escape" && G.state === "TUTOR") G.state = "TITLE";
+    if (e.code === "KeyS" && G.state === "TITLE") G.state = "MAP";
+    if (e.code === "Escape") {
+      if (G.state === "TUTOR" || G.state === "MAP") G.state = "TITLE";
+    }
+    if (G.state === "MAP") {
+      if (e.code === "Digit1") startLevel(1);
+      if (e.code === "Digit2") startLevel(2);
+      if (e.code === "Digit3") startLevel(3);
+    }
     if (e.code === "KeyP") {
-      if (G.state === "TUTOR") G.state = "TITLE";
+      if (G.state === "TUTOR" || G.state === "MAP") G.state = "TITLE";
       else togglePause();
     }
     if (e.code === "KeyM") toggleMute();
@@ -2650,12 +3092,15 @@ window.addEventListener('error', function(e){
     const x = (e.clientX - r.left) / r.width * W, y = (e.clientY - r.top) / r.height * H;
     if (e.button === 0) {
       if (G.state === "TITLE") {
-        if (inRect(x, y, TB_X - 6, TB_Y - 6, TB_W + 12, TB_H + 12)) G.state = "TUTOR";
-        else startGame();
+        titleHit(x, y);
       } else if (G.state === "TUTOR") {
         tutorHit(x, y);
+      } else if (G.state === "MAP") {
+        mapHit(x, y);
+      } else if (G.state === "CLEAR") {
+        G.state = "MAP";
       } else if (G.state === "DEAD") {
-        if (G.deadT > 0.6) startGame();
+        if (G.deadT > 0.6) restartRun();
       } else if (inPlayish()) {
         if (inCircle(x, y, PB_X, PB_Y, 26)) {
           togglePause();
@@ -2774,6 +3219,18 @@ window.addEventListener('error', function(e){
       renderTutorial();
       return;
     }
+    if (G.state === "MAP") {
+      ctx.fillStyle = gridPat;
+      ctx.fillRect(0, 0, W, H);
+      renderMap();
+      return;
+    }
+    if (G.state === "CLEAR") {
+      ctx.fillStyle = gridPat;
+      ctx.fillRect(0, 0, W, H);
+      renderClear();
+      return;
+    }
     ctx.save();
     ctx.translate(0, -(G.cam.y % 26));
     ctx.fillStyle = gridPat;
@@ -2787,7 +3244,25 @@ window.addEventListener('error', function(e){
     ctx.stroke();
     ctx.save();
     if (G.shake > 0) ctx.translate((Math.random() - 0.5) * G.shake, (Math.random() - 0.5) * G.shake);
-    {
+    if (G.cfg.theme === "site") {
+      const par = 0.18, gap = 1300;
+      const k0 = Math.floor((G.cam.y * par - 300) / gap);
+      for (let k = k0; k < 0; k++) {
+        const y = k * gap - G.cam.y * par;
+        if (y < -160 || y > H + 160) continue;
+        const a = 0.4 * clamp(1 - -k * gap / 26e3, 0.15, 1);
+        drawSpr("site_far", W / 2, y, { shadow: false, alpha: a });
+      }
+      const fy = 457 - G.cam.y * 0.22;
+      if (fy > -120 && fy < H + 120) drawSpr("site_far", W / 2, fy, { shadow: false, alpha: 0.7 });
+      const ny = 348 - G.cam.y * 0.45;
+      if (ny > -170 && ny < H + 170) drawSpr("site_near", W / 2, ny, { shadow: false, alpha: 0.75 });
+      ctx.save();
+      ctx.globalAlpha = 0.07;
+      ctx.fillStyle = "#e8862c";
+      ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+    } else {
       const par = 0.16, gap = 1500;
       const k0 = Math.floor((G.cam.y * par - 300) / gap);
       for (let k = k0; k < 0; k++) {
@@ -2817,7 +3292,21 @@ window.addEventListener('error', function(e){
     for (const p of G.platforms) {
       const py = sy(p.y);
       if (py < -40 || py > H + 40) continue;
-      drawSpr("plat_" + p.type, p.x, py + 7, { rot: p.rot });
+      if (p.type === "hook") {
+        ctx.save();
+        ctx.strokeStyle = "#54504a";
+        ctx.lineWidth = 2.4;
+        ctx.globalAlpha = 0.75;
+        ctx.beginPath();
+        ctx.moveTo(p.x, py - 4);
+        ctx.lineTo(p.ax, py - 64);
+        ctx.lineTo(p.ax, py - 130);
+        ctx.stroke();
+        ctx.restore();
+        drawSpr("plat_hook", p.x, py + 4, { rot: clamp((p.ax - p.x) / 300, -0.12, 0.12) });
+      } else {
+        drawSpr("plat_" + p.type, p.x, py + 7, { rot: p.rot, sx: p.type === "conveyor" ? p.beltDir || 1 : 1 });
+      }
       if (p.spring) {
         const ext = p.sprT > 0;
         drawSpr(ext ? "spring1" : "spring0", p.x, py - (ext ? 14 : 7), { shadow: false });
@@ -2848,8 +3337,9 @@ window.addEventListener('error', function(e){
     for (const e of G.enemies) {
       const ey = sy(e.y);
       if (e.dead || ey < -70 || ey > H + 70) continue;
-      if (e.kind === "thug") {
-        drawSpr(e.st === "lunge" ? "thug_lunge" : "thug_idle", e.x, ey, { sx: e.st === "lunge" ? e.lungeDir : e.dir });
+      if (e.kind === "thug" || e.kind === "hardhat") {
+        const base = e.kind === "hardhat" ? "hard" : "thug";
+        drawSpr(e.st === "lunge" ? base + "_lunge" : base + "_idle", e.x, ey, { sx: e.st === "lunge" ? e.lungeDir : e.dir });
         if (e.st === "tele") txt("!", e.x + 14 * e.dir, ey - 40, 24, { color: "#c9302c" });
         if (e.webT > 0) webWrap(e.x, ey, 16);
       } else if (e.kind === "cop") {
@@ -3076,6 +3566,8 @@ window.addEventListener('error', function(e){
       paper(84, 38, 148, 46, -0.03, 11);
       txt("SCORE", 40, 30, 12, { align: "left", color: "#8a8578", halo: false });
       txt(score().toLocaleString(), 40, 47, 24, { align: "left" });
+      if (G.mode === "story")
+        txt("L" + G.level + " · " + G.cfg.name, 96, 30, 10, { align: "left", color: "#c9302c", halo: false });
       const ammoRow = (y, key, n, flash) => {
         drawSpr(key, W - 66, y, { shadow: false, s: 0.9, alpha: n > 0 ? 1 : 0.35 });
         txt("× " + n, W - 46, y, 18, {
@@ -3152,10 +3644,11 @@ window.addEventListener('error', function(e){
       }
     }
     if (G.state === "BOSSINTRO" || G.state === "BOSS" && G.stateT < 1) {
-      const name = G.bossKind === "sandman" ? "THE SANDMAN" : "THE RHINO";
+      const BN = { sandman: ["THE SANDMAN", "sand!"], rhino: ["THE RHINO", "horn!"], lizard: ["THE LIZARD", "tail!"] };
+      const bn = BN[G.bossKind] || BN.sandman;
       paper(W / 2, 150, 330, 86, -0.02, 23);
-      txt(name + "!!", W / 2, 138, 34, { color: "#c9302c", rot: -0.02 });
-      txt("stomp his head ×3 — dodge the " + (G.bossKind === "sandman" ? "sand!" : "horn!"), W / 2, 170, 14);
+      txt(bn[0] + "!!", W / 2, 138, 34, { color: "#c9302c", rot: -0.02 });
+      txt("stomp his head ×3 — dodge the " + bn[1], W / 2, 170, 14);
     }
     if (G.state === "BOSSWIN") {
       txt("BOSS DOWN!", W / 2, 200, 40, { color: "#4c7f1f", rot: -0.03 });
@@ -3209,15 +3702,14 @@ window.addEventListener('error', function(e){
       L("every 10,000 — a BOSS. stomp his head ×3!", 492);
       L("5,000+ — thugs & cops. save citizens: +1 life!", 516);
       L("3 lives for the whole run — falling = KO!", 540);
-      if (G.best > 0) txt("BEST " + G.best.toLocaleString(), W / 2, 588, 20, { color: "#4c7f1f" });
-      txt(
-        IS_TOUCH ? "TAP to start" : "CLICK or SPACE to start",
-        W / 2,
-        640,
-        22,
-        { alpha: 0.55 + 0.45 * Math.sin(G.t * 4), color: INK }
-      );
-      if (!IS_TOUCH) txt("P pause · M mute · H how to play", W / 2, 692, 12, { color: "#8a8578" });
+      if (G.best > 0) txt("BEST " + G.best.toLocaleString(), W / 2, 584, 18, { color: "#4c7f1f" });
+      paper(W / 2, SB_Y + MB_H / 2, MB_W, MB_H, -8e-3, 63);
+      txt("STORY", W / 2, SB_Y + MB_H / 2, 22, { color: "#c9302c" });
+      if (G.storyCleared > 0) txt(G.storyCleared + "/6", W / 2 + 78, SB_Y + MB_H / 2, 13, { color: "#8a8578", halo: false });
+      paper(W / 2, EB_Y + MB_H / 2, MB_W, MB_H, 8e-3, 64);
+      txt("ENDLESS", W / 2 - 14, EB_Y + MB_H / 2, 22, { color: BLUE });
+      txt("∞", W / 2 + 62, EB_Y + MB_H / 2, 22, { color: BLUE, halo: false });
+      if (!IS_TOUCH) txt("Space endless · S story · H how to play · P pause · M mute", W / 2, 712, 10, { color: "#8a8578" });
     }
     if (G.state === "DEAD" && G.deadT > 0.5) {
       ctx.fillStyle = "rgba(249,246,236,.45)";
@@ -3286,7 +3778,7 @@ window.addEventListener('error', function(e){
         ctx.restore();
       }
     }
-    cv.style.cursor = G.state === "TITLE" || G.state === "DEAD" ? "pointer" : "crosshair";
+    cv.style.cursor = G.state === "TITLE" || G.state === "DEAD" || G.state === "MAP" || G.state === "CLEAR" ? "pointer" : "crosshair";
     document.getElementById("tiltBtn").style.display = needsTiltPermission && !G.tiltGranted && G.state === "TITLE" ? "block" : "none";
   }
   function webWrap(x, y, r) {
@@ -3298,6 +3790,81 @@ window.addEventListener('error', function(e){
       inkLine(ctx, rng, x + r, y - 18 + i * 9, x - r, y - 9 + i * 9, { stroke: "#efece0", lw: 1.3, jit: 1, rough: false });
     }
     ctx.restore();
+  }
+  var REGION_NAMES = ["NEW YORK", "CHICAGO", "EVERGLADES", "???", "???", "???"];
+  function renderMap() {
+    paper(W / 2, 46, 320, 52, -0.01, 73);
+    txt("STORY — AMERICA", W / 2, 46, 24, { color: "#c9302c" });
+    paper(36, 42, 44, 44, 0.02, 74);
+    txt("←", 36, 42, 24);
+    drawSpr("usmap", MAP_CX, MAP_CY, { shadow: false });
+    ctx.save();
+    ctx.strokeStyle = "#8a8578";
+    ctx.setLineDash([3, 7]);
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.65;
+    ctx.beginPath();
+    ctx.moveTo(MAP_PINS[0][0], MAP_PINS[0][1]);
+    for (let i = 1; i < MAP_PINS.length; i++) ctx.lineTo(MAP_PINS[i][0], MAP_PINS[i][1]);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+    for (let i = 0; i < 6; i++) {
+      const px = MAP_PINS[i][0], py = MAP_PINS[i][1];
+      const lv = i + 1;
+      const unlocked = lv <= Math.min(STORY_PLAYABLE, G.storyCleared + 1);
+      const cleared = lv <= G.storyCleared;
+      const rng = mulberry32(90 + i);
+      inkPath(ctx, rng, ellipsePts(px, py, 25, 25, 0, 14), { fill: "#fffdf4", stroke: INK, lw: 2.2, jit: 0.8 });
+      const face = lv === 1 ? "face_sandman" : lv === 2 ? "face_rhino" : null;
+      if (face && (unlocked || cleared)) {
+        drawSpr(face, px, py, { shadow: false, s: 1.15, alpha: cleared ? 0.4 : 1 });
+      } else {
+        drawSpr("face_q", px, py, { shadow: false, s: 1.15 });
+        txt("?", px, py + 1, 22, { color: "#8a8578", halo: false });
+      }
+      if (cleared) txt("DEFEATED", px, py + 7, 11, { color: "#c9302c", rot: -0.25 });
+      if (unlocked && !cleared) {
+        ctx.save();
+        ctx.strokeStyle = "#c9302c";
+        ctx.lineWidth = 2.5;
+        ctx.globalAlpha = 0.5 + 0.4 * Math.sin(G.t * 5);
+        ctx.beginPath();
+        ctx.arc(px, py, 30 + Math.sin(G.t * 5) * 2, 0, TAU);
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (lv > STORY_PLAYABLE && lv <= G.storyCleared + 1)
+        txt("SOON", px, py + 36, 11, { color: "#8a8578" });
+      const nameKnown = unlocked || cleared;
+      txt(
+        nameKnown ? REGION_NAMES[i] : "???",
+        px,
+        py - 34,
+        12,
+        { color: nameKnown ? INK : "#a39d8e", halo: false }
+      );
+    }
+    paper(W / 2, 640, 424, 96, 8e-3, 75);
+    if (G.storyCleared >= STORY_PLAYABLE) {
+      txt("All current regions cleared!", W / 2, 622, 16, { color: "#4c7f1f" });
+      txt("more villains coming soon — replay any region", W / 2, 650, 13, { color: "#8a8578" });
+    } else {
+      const nxt = Math.min(STORY_PLAYABLE, G.storyCleared + 1);
+      txt("NEXT: " + REGION_NAMES[nxt - 1], W / 2, 622, 18, { color: "#c9302c" });
+      txt("climb 10,000 · beat the boss · 3 lives", W / 2, 650, 13, { color: "#8a8578" });
+    }
+    txt(IS_TOUCH ? "tap a region to fight · ← back" : "click a region · 1-2 keys · Esc back", W / 2, 700, 12, { color: "#8a8578" });
+  }
+  function renderClear() {
+    paper(W / 2, H / 2 - 30, 380, 250, -0.012, 76);
+    txt("REGION CLEAR!", W / 2, H / 2 - 120, 34, { color: "#4c7f1f", rot: -0.02 });
+    txt(REGION_NAMES[G.level - 1] + " is safe again", W / 2, H / 2 - 80, 16);
+    txt("SCORE", W / 2, H / 2 - 46, 13, { color: "#8a8578" });
+    txt(score().toLocaleString(), W / 2, H / 2 - 14, 40);
+    paper(W / 2, H / 2 + 62, 210, 44, 0.01, 77);
+    txt("TO THE MAP →", W / 2, H / 2 + 62, 18, { color: "#c9302c" });
+    txt(IS_TOUCH ? "tap to continue" : "click / Space to continue", W / 2, H / 2 + 120, 13, { color: "#8a8578" });
   }
   function beam(x, y0, y1, alpha) {
     const rng = mulberry32(G.boilFrame * 13 + 5);
@@ -3660,6 +4227,10 @@ window.addEventListener('error', function(e){
     G,
     update,
     startGame,
+    startEndless,
+    startLevel,
+    restartRun,
+    debugJumpTo,
     tryWebShoot,
     tryGlideStart,
     bossHeadBox,
@@ -3756,6 +4327,9 @@ window.addEventListener('error', function(e){
   var ik = Q.get("item");
   if (ik && G.platforms[0]) G.platforms[0].item = { kind: ik, amt: ik === "web" || ik === "wing" ? 5 : 0 };
   if (Q.get("sense")) G.senseT = parseFloat(Q.get("sense")) || 3;
+  if (Q.get("cleared") != null) G.storyCleared = parseInt(Q.get("cleared"), 10) || 0;
+  if (Q.get("map")) G.state = "MAP";
+  if (Q.get("level")) startLevel(parseInt(Q.get("level"), 10) || 1);
   requestAnimationFrame(frame);
 })();
 
