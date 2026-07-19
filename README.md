@@ -2,7 +2,7 @@
 
 A hand-drawn canvas jumper, served as a single static `index.html` on GitHub Pages. Personal / internal use only — the page carries `noindex`; keep the URL unlisted and non-commercial.
 
-- `index.html` is a **build artifact** (v4, 2026-07-16). The source of truth (ES-module `src/`, esbuild step, 87-check headless test suite) lives in a private repo; to update, build there (`node build.mjs`) and copy the output over this file.
+- `index.html` is a **build artifact** (PROD channel). `dev/index.html` is the **DEV channel** (testing: DEV stamp, all story levels unlocked) — new builds land there first, PROD updates on promotion. The source of truth (ES-module `src/`, esbuild step, 151-check headless test suite) lives in a private repo; `node build.mjs` there emits both files.
 - Deployment: the static workflow in `.github/workflows/deploy-pages.yml` republishes the site on every push to `main` (~1 min).
 - History note: an experimental **Phaser v3 + TypeScript + Vite rebuild** of the same game was live 2026-07-10 → 2026-07-13. It remains fully preserved in git history (`490130b` … `82ea8e3`) — restore with `git checkout 82ea8e3 -- .` if ever wanted.
 
