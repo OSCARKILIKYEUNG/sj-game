@@ -45,7 +45,7 @@ window.addEventListener('error', function(e){
    BUILT FILE — do not edit by hand. Source lives in src/*.js;
    rebuild with:  node build.mjs
    ================================================================ */
-globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
+globalThis.__DEV__ = {sha: "8f81f8c", built: "2026-07-19"};
 "use strict";
 (() => {
   // src/util.js
@@ -106,7 +106,7 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
   fit();
 
   // src/world.js
-  var GAME_VERSION = "v6.1";
+  var GAME_VERSION = "v6.2";
   var IS_DEV = typeof globalThis !== "undefined" && !!globalThis.__DEV__;
   var ENDLESS_CFG = {
     mode: "endless",
@@ -182,9 +182,10 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
   var TB_W = 200;
   var TB_H = 36;
   var TUT_Y0 = 108;
-  var TUT_STEP = 36;
-  var TUT_N = 13;
+  var TUT_STEP = 33;
+  var TUT_N = 14;
   var TUT_LX = 186;
+  var HB_Y = 138;
   var VENT_CYCLE = 2.6;
   var VENT_ON = 2;
   var MB_W = 224;
@@ -2412,6 +2413,21 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     G.stateT = 0;
     G.paused = false;
   }
+  function goHome() {
+    G.state = "TITLE";
+    G.paused = false;
+    G.boss = null;
+    G.enemies = [];
+    G.bullets = [];
+    G.globs = [];
+    G.arrows = [];
+    G.parts = [];
+    G.floats = [];
+    G.gliding = false;
+    G.zip = null;
+    G.ironCarry = null;
+    G.touchState = null;
+  }
   function restartRun() {
     if (G.mode === "story" && G.level >= 1) startLevel(G.level);
     else startEndless();
@@ -3394,7 +3410,7 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     }
     if (x < TUT_LX) {
       const i = Math.round((y - TUT_Y0) / TUT_STEP);
-      if (i >= 0 && i < TUT_N && Math.abs(y - (TUT_Y0 + i * TUT_STEP)) < 17) {
+      if (i >= 0 && i < TUT_N && Math.abs(y - (TUT_Y0 + i * TUT_STEP)) < 15) {
         G.tutTopic = i;
         return true;
       }
@@ -3452,8 +3468,12 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     }
     for (const t of e.changedTouches) {
       const [x, y] = touchPos(t);
-      if (inPlayish() && inCircle(x, y, PB_X, PB_Y, 30)) {
+      if (inPlayish() && inCircle(x, y, PB_X, PB_Y, 28)) {
         togglePause();
+        return;
+      }
+      if (inPlayish() && inCircle(x, y, PB_X, HB_Y, 28)) {
+        goHome();
         return;
       }
     }
@@ -3559,8 +3579,12 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
       } else if (G.state === "DEAD") {
         if (G.deadT > 0.6) restartRun();
       } else if (inPlayish()) {
-        if (inCircle(x, y, PB_X, PB_Y, 26)) {
+        if (inCircle(x, y, PB_X, PB_Y, 24)) {
           togglePause();
+          return;
+        }
+        if (inCircle(x, y, PB_X, HB_Y, 24)) {
+          goHome();
           return;
         }
         if (!G.paused && inCircle(x, y, IB_X, IB_Y, IB_R + 4)) {
@@ -4112,6 +4136,21 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
           ctx.fill();
         }
         ctx.restore();
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        inkPath(ctx, mulberry32(79), ellipsePts(PB_X, HB_Y, PB_R, PB_R, 0, 12), { fill: "#fffdf4", stroke: INK, lw: 2, jit: 0.8 });
+        ctx.strokeStyle = INK;
+        ctx.fillStyle = INK;
+        ctx.lineWidth = 2;
+        ctx.lineJoin = "round";
+        ctx.beginPath();
+        ctx.moveTo(PB_X - 8, HB_Y);
+        ctx.lineTo(PB_X, HB_Y - 8);
+        ctx.lineTo(PB_X + 8, HB_Y);
+        ctx.stroke();
+        ctx.strokeRect(PB_X - 5, HB_Y - 1, 10, 8);
+        ctx.fillRect(PB_X - 1.5, HB_Y + 2, 3, 5);
+        ctx.restore();
       }
       if (G.state === "PLAY" || G.state === "BOSS" || G.state === "BOSSINTRO" || G.state === "BOSSWIN") {
         ctx.save();
@@ -4132,7 +4171,7 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
         ctx.restore();
         if (G.stored) txt(IS_TOUCH ? "TAP!" : "SPACE", IB_X, IB_Y + IB_R + 12, 11, { color: "#8a8578", halo: false });
       }
-      if (DEV) txt("DEV", PB_X, PB_Y + PB_R + 12, 10, { color: "#c9302c", halo: false, alpha: 0.7 });
+      if (DEV) txt("DEV", PB_X, HB_Y + PB_R + 12, 10, { color: "#c9302c", halo: false, alpha: 0.7 });
       if (G.hintT > 0 && G.state === "PLAY")
         txt(
           IS_TOUCH ? "tilt to move · tap = web · hold = glide" : "← → move · L-click web up · R-click hold glide",
@@ -4178,8 +4217,8 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
       txt(IS_TOUCH ? "tap ▶ to resume" : "press P or click ▶", W / 2, H / 2 + 22, 14, { color: "#8a8578" });
     }
     if (G.state === "TITLE") {
-      const by = 300 - Math.abs(Math.sin(G.t * 2.6)) * 120;
-      drawSpr("plat_normal", W / 2, 312);
+      const by = 470 - Math.abs(Math.sin(G.t * 2.6)) * 150;
+      drawSpr("plat_normal", W / 2, 482);
       G.boilFrame = Math.floor(G.t * 5);
       drawSpr("spidey_" + (Math.sin(G.t * 2.6 + Math.PI / 2) > 0 ? "bounce" : "fall"), W / 2, by - 30);
       paper(W / 2, 120, 380, 130, -0.015, 41);
@@ -4194,31 +4233,6 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
       ctx.restore();
       paper(W / 2, TB_Y + TB_H / 2, TB_W, TB_H, -0.01, 61);
       txt("?  HOW TO PLAY", W / 2, TB_Y + TB_H / 2, 17, { color: BLUE });
-      paper(W / 2, 472, 380, 196, 0.012, 43);
-      const L = (str, y, ic) => {
-        if (ic) drawSpr(ic, W / 2 - 158, y, { shadow: false, s: 0.8 });
-        txt(str, W / 2 - 136, y, 15, { align: "left" });
-      };
-      if (IS_TOUCH) {
-        L("TILT phone — move left / right", 404);
-        txt("TAP", W / 2 - 136, 432, 15, { align: "left", color: "#c9302c" });
-        txt("— web-zip straight up", W / 2 - 92, 432, 15, { align: "left" });
-        drawSpr("it_web", W / 2 - 158, 432, { shadow: false, s: 0.8 });
-        txt("HOLD", W / 2 - 136, 460, 15, { align: "left", color: BLUE });
-        txt("— glide down slowly", W / 2 - 86, 460, 15, { align: "left" });
-        drawSpr("it_wing", W / 2 - 158, 460, { shadow: false, s: 0.8 });
-      } else {
-        L("← → or A / D — move", 404);
-        txt("L-CLICK", W / 2 - 136, 432, 15, { align: "left", color: "#c9302c" });
-        txt("— web-zip straight up", W / 2 - 64, 432, 15, { align: "left" });
-        drawSpr("it_web", W / 2 - 158, 432, { shadow: false, s: 0.8 });
-        txt("R-CLICK", W / 2 - 136, 460, 15, { align: "left", color: BLUE });
-        txt("hold — glide down slowly", W / 2 - 64, 460, 15, { align: "left" });
-        drawSpr("it_wing", W / 2 - 158, 460, { shadow: false, s: 0.8 });
-      }
-      L("every 10,000 — a BOSS. stomp his head ×3!", 492);
-      L("5,000+ — thugs & cops. save citizens: +1 life!", 516);
-      L("3 lives for the whole run — falling = KO!", 540);
       if (G.best > 0) txt("BEST " + G.best.toLocaleString(), W / 2, 584, 18, { color: "#4c7f1f" });
       paper(W / 2, SB_Y + MB_H / 2, MB_W, MB_H, -8e-3, 63);
       txt("STORY", W / 2, SB_Y + MB_H / 2, 22, { color: "#c9302c" });
@@ -4428,9 +4442,9 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     {
       t: "MOVE & GLIDE",
       cap: [
-        "Tilt the phone (or ← → / A D) to steer.",
-        "HOLD (or right-click) to glide down slowly.",
-        "Landing on a platform bounces you up."
+        "tilt / ← → = steer · landing = auto-bounce",
+        "HOLD / R-click = glide (slow fall, uses ammo)",
+        "screen edges wrap around"
       ],
       demo(t) {
         const by = 330 - Math.abs(Math.sin(t * 2.5)) * 120;
@@ -4444,9 +4458,9 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     {
       t: "WEB ZIP",
       cap: [
-        "TAP (or left-click): the web fires STRAIGHT UP",
-        "and zips you to the platform above.",
-        "Movement only — attacking is Hawkeye's job!"
+        "TAP / L-click = web fires STRAIGHT UP",
+        "zips you to the platform above · uses ammo",
+        "movement only — attack = Hawkeye arrow"
       ],
       demo(t) {
         const tt = t % 2.2;
@@ -4468,11 +4482,55 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
       }
     },
     {
+      t: "PLATFORMS",
+      cap: [
+        "green safe · blue moves · tan breaks once",
+        "grey warped = NO bounce · spring = super jump",
+        "belt shoves you · hook sways · slime slips",
+        "vent: land ON the steam blast = huge boost"
+      ],
+      demo(t) {
+        const rows = [
+          ["plat_normal", "safe", "plat_moving", "moves"],
+          ["plat_crumble", "breaks once", "plat_rotten", "NO bounce!"],
+          ["plat_conveyor", "belt shove", "plat_hook", "sways"]
+        ];
+        let yy = 152;
+        for (const r of rows) {
+          drawSpr(r[0], 268, yy);
+          txt(r[1], 268, yy + 24, 11, { color: "#8a8578", halo: false });
+          drawSpr(r[2], 396, yy);
+          txt(r[3], 396, yy + 24, 11, { color: "#8a8578", halo: false });
+          yy += 66;
+        }
+        drawSpr("plat_slime", 268, 350);
+        txt("slippery", 268, 374, 11, { color: "#8a8578", halo: false });
+        drawSpr("plat_normal", 396, 350);
+        drawSpr("vent", 396, 335, { shadow: false });
+        const ph = t % 2.6;
+        if (ph >= 2) {
+          ctx.save();
+          ctx.globalAlpha = 0.6;
+          ctx.fillStyle = "#e8f2f6";
+          for (let i = 0; i < 4; i++) {
+            ctx.beginPath();
+            ctx.arc(396 + Math.sin(t * 9 + i) * 5, 318 - i * 20, 7 + i * 2, 0, TAU);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+        txt("steam vent", 396, 374, 11, { color: "#8a8578", halo: false });
+        drawSpr("plat_normal", 332, 432);
+        drawSpr("spring0", 332, 419, { shadow: false });
+        txt("spring", 332, 456, 11, { color: "#8a8578", halo: false });
+      }
+    },
+    {
       t: "PICKUPS & IRON MAN",
       cap: [
-        "Grab web / glide refills as you climb.",
-        "The Iron Man helmet calls Tony — he hauls you",
-        "WAY up. Untouchable for the whole ride."
+        "web ×5/×10 · glide ×5/×10 = ammo refills",
+        "Iron Man helmet = HUGE lift, untouchable",
+        "drop-off platform waits at the top"
       ],
       demo(t) {
         drawSpr("it_web", 250, 150);
@@ -4496,9 +4554,9 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     {
       t: "STORED GEAR",
       cap: [
-        "Cap / Sense / Hulk / Hawkeye share ONE slot.",
-        "A new pickup REPLACES the stored one.",
-        "Use it: press SPACE, or tap the slot logo."
+        "Cap · Sense · Hulk · Hawkeye → ONE slot",
+        "new pickup REPLACES the old one",
+        "use: SPACE / E · or tap the slot logo"
       ],
       demo(t) {
         const k = Math.floor(t / 1.4) % 4;
@@ -4523,9 +4581,9 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     {
       t: "CAP SHIELD",
       cap: [
-        "Use it: a vibranium bubble surrounds you.",
-        "BLOCKS the next hit — knife, bullet, even a",
-        "boss attack — then breaks. Falls still fatal!"
+        "use → bubble BLOCKS the next hit",
+        "works on boss attacks too",
+        "breaks after 1 block · falls still kill"
       ],
       demo(t) {
         const tt = t % 2;
@@ -4547,9 +4605,9 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     {
       t: "SPIDER-SENSE",
       cap: [
-        "Use it: ~3 seconds of BULLET-TIME — the whole",
-        "world slows: you, enemies, bullets, platforms.",
-        "Golden frame = active. Plan your next move!"
+        "use → ~3 s of BULLET-TIME",
+        "EVERYTHING slows — you included",
+        "golden frame = active · plan your move"
       ],
       demo(t) {
         drawSpr("cop_aim", 250, 330);
@@ -4581,9 +4639,9 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     {
       t: "HAWKEYE ARROW",
       cap: [
-        "Use it: one arrow flies STRAIGHT UP and",
-        "PIERCES every board — kills a thug, dizzies",
-        "a cop for 3 s, hits a boss for 1 HP!"
+        "use → 1 arrow STRAIGHT UP, pierces boards",
+        "thug/minion = killed · cop = dizzy 3 s",
+        "boss = −1 HP"
       ],
       demo(t) {
         const tt = t % 2.4;
@@ -4604,9 +4662,9 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     {
       t: "HULK SMASH",
       cap: [
-        "Use it: HULK drops in and smashes the ground.",
-        "Every thug AND cop on screen goes down.",
-        "In a boss fight the boss loses 1 HP too!"
+        "use → HULK ground-pound",
+        "ALL thugs + cops on screen go down",
+        "boss = −1 HP · citizens are safe"
       ],
       demo(t) {
         const tt = t % 2.2;
@@ -4627,31 +4685,47 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
       }
     },
     {
-      t: "THUG",
+      t: "THUG & HARDHAT",
       cap: [
-        "Waits on a platform, flashes a red !,",
-        "then knife-lunges sideways (1 hit = 1 life).",
-        "Beat him with ONE stomp or a Hawkeye arrow."
+        "red ! → knife lunge = −1 life",
+        "THUG: 1 stomp or arrow kills",
+        "HARDHAT: helmet! stomps SHOVE him —",
+        "push him off the edge (arrow works too)"
       ],
       demo(t) {
         const tt = t % 2.6;
-        drawSpr("plat_moving", 330, 342);
+        drawSpr("plat_moving", 268, 210);
         let off = 0, key = "thug_idle";
         if (tt > 1 && tt < 1.9) {
           key = "thug_lunge";
-          off = Math.sin(Math.PI * (tt - 1) / 0.9) * 90;
+          off = Math.sin(Math.PI * (tt - 1) / 0.9) * 55;
         }
-        drawSpr(key, 330 + off, 308);
-        if (tt > 0.5 && tt <= 1) txt("!", 348, 268, 26, { color: "#c9302c" });
-        drawSpr("spidey_fall", 430, 300, { s: 0.8 });
+        drawSpr(key, 268 + off, 176);
+        if (tt > 0.5 && tt <= 1) txt("!", 286, 138, 24, { color: "#c9302c" });
+        txt("stomp / arrow", 268, 250, 11, { color: "#8a8578", halo: false });
+        drawSpr("plat_normal", 396, 380);
+        const ph = t % 2.4;
+        const step2 = Math.min(3, Math.floor(ph / 0.6));
+        const falling = ph > 1.8;
+        const hx = 396 - 22 + step2 * 22;
+        drawSpr(
+          "hard_idle",
+          hx,
+          falling ? 346 + (ph - 1.8) * 300 : 346,
+          { rot: falling ? (ph - 1.8) * 4 : 0, alpha: falling ? Math.max(0, 1 - (ph - 1.8) * 1.4) : 1 }
+        );
+        if (!falling && ph % 0.6 < 0.22) drawSpr("spidey_bounce", hx, 292, { s: 0.65 });
+        if (!falling) txt("CLANG!", 396, 300, 12, { color: "#8a8578", halo: false });
+        else txt("SHOVED OFF!", 396, 300, 13, { color: "#c9302c" });
+        txt("shove → edge", 396, 420, 11, { color: "#8a8578", halo: false });
       }
     },
     {
       t: "COP",
       cap: [
-        "Shoots at you (1 hit = 1 life). You CANNOT",
-        "squash a cop — stomping only bounces + stuns.",
-        "A Hawkeye arrow makes him dizzy for 3 s."
+        "shoots · bullet = −1 life",
+        "CAN'T be killed · stomp = bounce + stun",
+        "arrow = dizzy 3 s (no shooting)"
       ],
       demo(t) {
         const tt = t % 3;
@@ -4671,31 +4745,44 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
       }
     },
     {
-      t: "CITIZEN",
+      t: "CITIZEN vs MINION",
       cap: [
-        "Someone is waving HELP! on a rooftop.",
-        "Touch them to rescue: +1 life",
-        "(your lives cap at 3)."
+        "waving HUMAN = citizen → touch = +1 life",
+        "green CRITTER = lizard minion → it BITES",
+        "stomp / arrow the minion · lives cap at 3"
       ],
       demo(t) {
-        const tt = t % 2.4;
-        drawSpr("plat_normal", 380, 342);
-        drawSpr("citizen", 380, 308);
-        txt("HELP!", 380, 258, 14, { color: "#c9302c", rot: -0.04 });
-        const sx = Math.min(348, 230 + tt * 90);
-        drawSpr("spidey_fall", sx, 300, { s: 0.9 });
-        if (sx >= 346) {
-          txt("+1 LIFE", 380, 230, 17, { color: "#4c7f1f" });
-          drawSpr("pip", 380, 205, { shadow: false, s: 1.2 });
-        }
+        txt("FRIEND", 268, 122, 14, { color: "#4c7f1f" });
+        txt("ENEMY", 396, 122, 14, { color: "#c9302c" });
+        ctx.save();
+        ctx.strokeStyle = "#b9b2a0";
+        ctx.setLineDash([3, 6]);
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(332, 135);
+        ctx.lineTo(332, 300);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+        drawSpr("plat_normal", 268, 226);
+        drawSpr("citizen", 268, 192);
+        txt("HELP!", 268, 146, 13, { color: "#c9302c", rot: -0.04 });
+        txt("touch = +1 life", 268, 258, 11.5, { color: "#4c7f1f", halo: false });
+        drawSpr("pip", 268, 282, { shadow: false, s: 1.2 });
+        drawSpr("plat_normal", 396, 226);
+        const bite = t % 1.6 > 1.1;
+        drawSpr(bite ? "minion_bite" : "minion_idle", 396 + Math.sin(t * 2) * 14, 212, { sx: Math.cos(t * 2) > 0 ? 1 : -1 });
+        if (bite) txt("CHOMP!", 396, 166, 13, { color: "#c9302c" });
+        txt("bite = −1 life", 396, 258, 11.5, { color: "#c9302c", halo: false });
+        txt("stomp / arrow it", 396, 278, 11.5, { color: "#8a8578", halo: false });
       }
     },
     {
       t: "STORY MODE",
       cap: [
-        "Beat a boss to free his region and unlock the",
-        "next one on the US map. Each level: climb",
-        "10,000, then the showdown. Endless = classic."
+        "US map · beat the boss → next region",
+        "each level: climb 10,000 → showdown",
+        "ENDLESS = the classic infinite climb"
       ],
       demo(t) {
         drawSpr("usmap", 330, 280, { shadow: false, s: 0.52 });
@@ -4724,9 +4811,9 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     {
       t: "BOSSES & LIVES",
       cap: [
-        "Every 10,000: a boss arena. Stomp his HEAD ×3.",
-        "Sandman roams · Rhino charges · Lizard leaps.",
-        "3 lives for the run — falling is instant KO!"
+        "every 10,000 → boss arena · stomp HEAD ×3",
+        "Sandman roams · Rhino charges · Lizard leaps",
+        "3 lives per run · falling = instant KO"
       ],
       demo(t) {
         const tt = t % 2.2;
@@ -4772,8 +4859,9 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     topic.demo(G.t);
     ctx.restore();
     paper(W / 2, 620, 444, 118, -8e-3, 68);
+    const capY0 = 620 - (topic.cap.length - 1) * 11;
     for (let i = 0; i < topic.cap.length; i++)
-      txt(topic.cap[i], W / 2, 596 + i * 24, 14.5, { halo: false });
+      txt(topic.cap[i], W / 2, capY0 + i * 22, 14.5, { halo: false });
     txt(
       IS_TOUCH ? "tap a topic on the left · tap ← to go back" : "click the topics · ← / Esc to go back",
       W / 2,
@@ -4792,6 +4880,7 @@ globalThis.__DEV__ = {sha: "55021f7", built: "2026-07-19"};
     startEndless,
     startLevel,
     restartRun,
+    goHome,
     debugJumpTo,
     tryWebShoot,
     tryGlideStart,
