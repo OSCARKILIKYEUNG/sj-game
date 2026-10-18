@@ -72,7 +72,7 @@ window.addEventListener('error', function(e){
    BUILT FILE — do not edit by hand. Source lives in src/*.js;
    rebuild with:  node build.mjs
    ================================================================ */
-globalThis.__DEV__ = {sha: "02b9f59", built: "2026-10-18"};
+globalThis.__DEV__ = {sha: "477d9d7", built: "2026-10-18"};
 "use strict";
 (() => {
   // src/util.js
@@ -1077,7 +1077,7 @@ globalThis.__DEV__ = {sha: "02b9f59", built: "2026-10-18"};
     const arms = S2.arms.map(TP), legs = S2.legs.map(TP);
     if (S2.strand) {
       const gl = arms[1][2];
-      F.line(g, [[gl[0] + 0.6, gl[1] - 2], [gl[0] + 4.6, 1.8]], "rgb(140,140,140)", 1, 0.1);
+      F.line(g, [[gl[0] + 0.6, gl[1] - 2], [gl[0] + 4.6, 1.8]], "rgba(140,140,140,0)", 1, 0.1);
     }
     if (S2.wings) for (const m of [0, 1]) {
       const X = (x) => m ? 52 - x : x;
