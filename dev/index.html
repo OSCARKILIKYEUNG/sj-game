@@ -72,7 +72,7 @@ window.addEventListener('error', function(e){
    BUILT FILE — do not edit by hand. Source lives in src/*.js;
    rebuild with:  node build.mjs
    ================================================================ */
-globalThis.__DEV__ = {sha: "b7e4917", built: "2026-10-18"};
+globalThis.__DEV__ = {sha: "02b9f59", built: "2026-10-18"};
 "use strict";
 (() => {
   // src/util.js
@@ -2985,8 +2985,58 @@ globalThis.__DEV__ = {sha: "b7e4917", built: "2026-10-18"};
     G.storyCleared = S.data.story.cleared;
     G.best = G.mode === "story" && G.level >= 1 ? storyBestFor(G.level) : bestFor(G.powered);
   }
+  var DEV_SWITCH = IS_DEV && !DEBUG_MEMORY;
+  var SKILLS_OFF_KEY = SAVE_KEY + ".skillsOff";
+  var SK_OFF = [];
+  function readSkillsOff() {
+    try {
+      const r = localStorage.getItem(SKILLS_OFF_KEY), a = r ? JSON.parse(r) : [];
+      return Array.isArray(a) ? a.filter((id) => typeof id === "string" && ECON.skills[id]) : [];
+    } catch (e) {
+      return [];
+    }
+  }
+  function writeSkillsOff() {
+    if (S.mode !== "storage") return;
+    try {
+      localStorage.setItem(SKILLS_OFF_KEY, JSON.stringify(SK_OFF));
+    } catch (e) {
+    }
+  }
+  function devGrant(s) {
+    const before = JSON.stringify(s);
+    SK_OFF = readSkillsOff();
+    s.lvl = ECON.lvlCap;
+    s.xp = Math.max(s.xp, XP_CAP);
+    s.sp = 0;
+    for (const id of Object.keys(ECON.suits)) if (!s.suits.own.includes(id)) s.suits.own.push(id);
+    for (const id of Object.keys(ECON.webs))
+      s.webs.own[id] = Math.max(Math.floor(s.webs.own[id] || 0), ECON.webs[id].mk.length);
+    for (const id of Object.keys(ECON.skills)) {
+      if (SK_OFF.includes(id)) delete s.skills[id];
+      else s.skills[id] = true;
+    }
+    s.tok = Math.max(s.tok, 99999);
+    s.parts = Math.max(s.parts, 9999);
+    if (JSON.stringify(s) !== before) persistSave();
+  }
+  function devToggleSkill(id) {
+    if (!DEV_SWITCH || !ECON.skills[id]) return null;
+    const s = S.data, on = s.skills[id] === true;
+    if (on) {
+      delete s.skills[id];
+      if (!SK_OFF.includes(id)) SK_OFF.push(id);
+    } else {
+      s.skills[id] = true;
+      SK_OFF = SK_OFF.filter((x) => x !== id);
+    }
+    writeSkillsOff();
+    persistSave();
+    return !on;
+  }
   load();
   if (DEBUG_MEMORY) applyDebugParams(S.data);
+  else if (IS_DEV) devGrant(S.data);
   mirror();
   if (S.mode === "storage") {
     try {
@@ -3876,6 +3926,14 @@ globalThis.__DEV__ = {sha: "b7e4917", built: "2026-10-18"};
         o.parts = t.mk[mk].parts;
         o.state = "EQUIPPED";
       } else o.state = "EQUIPPED";
+    } else if (DEV_SWITCH) {
+      if (s.skills[item.id] === true) {
+        o.action = "TURN OFF";
+        o.state = "ON";
+      } else {
+        o.action = "TURN ON";
+        o.state = "OFF (DEV)";
+      }
     } else {
       if (s.skills[item.id] !== true) {
         o.action = "LEARN";
@@ -3967,6 +4025,8 @@ globalThis.__DEV__ = {sha: "b7e4917", built: "2026-10-18"};
         s.webs.own[it.id] = o.mk + 1;
         done = MK_NAME[o.mk + 1] + "!";
       }
+    } else if (DEV_SWITCH) {
+      done = devToggleSkill(it.id) ? "SKILL ON" : "SKILL OFF";
     } else s.skills[it.id] = true;
     L.refusal = null;
     L.msg = { key: labItemKey(it), text: done };
@@ -7520,18 +7580,21 @@ globalThis.__DEV__ = {sha: "b7e4917", built: "2026-10-18"};
     cardBox(LAB_CODE_X, LAB_CODE_Y, LAB_CODE_W, LAB_CODE_H, 88, "#fffdf4", INK, 2.2);
     txt("SAVE CODE", LAB_CODE_X + LAB_CODE_W / 2, LAB_CODE_Y + LAB_CODE_H / 2 + 1, 18, { color: BLUE, halo: false });
     const where = f.readOnly ? "NEWER SAVE — read-only, nothing is saved" : f.mode === "memory" ? f.failed || f.unavailable ? "SAVE FAILED — this session is not saved" : "debug session — not saved" : "saved on this device";
-    txt(where, W / 2, 680, 12, { color: f.mode === "storage" ? GREEN : LRED, halo: false });
+    txt(where, W / 2, DEV_SWITCH ? 677 : 680, 12, { color: f.mode === "storage" ? GREEN : LRED, halo: false });
+    if (DEV_SWITCH) txt("DEV — all unlocked · pick a skill, then TURN ON/OFF", W / 2, 692, 11, { color: LRED, halo: false, maxW: 456 });
     txt(IS_TOUCH ? "tap a card, then its button · ← back" : "1-3 tabs · arrows select · Enter acts · Esc back", W / 2, 704, 12, { color: GREY2, halo: false });
   }
   function labCard(it, r, sel, s, i) {
     const o = labOffer(it, s);
-    const done = o.state === "EQUIPPED" || o.state === "LEARNED";
+    const done = o.state === "EQUIPPED" || o.state === "LEARNED" || o.state === "ON";
     const dim = o.state === "LOCKED" && !reqMet(o.req, s);
     cardBox(r.x, r.y, r.w, r.h, 100 + i * 7 + G.lab.tab * 31, done ? "#eef5e4" : "#fffdf4", INK, 1.8);
     const stateLine = (x, y, size, center) => {
       const a = { align: center ? "center" : "left", halo: false };
       if (o.state === "EQUIPPED") return txt("EQUIPPED", x, y, size, Object.assign(a, { color: GREEN }));
       if (o.state === "LEARNED") return txt("LEARNED", x, y, size, Object.assign(a, { color: GREEN }));
+      if (o.state === "ON") return txt("ON", x, y, size, Object.assign(a, { color: GREEN }));
+      if (o.state === "OFF (DEV)") return txt("OFF (DEV)", x, y, size, Object.assign(a, { color: LRED, maxW: 90 }));
       if (o.state === "OWNED") return txt("OWNED", x, y, size, Object.assign(a, { color: INK }));
       if (dim) return txt("NEEDS " + reqText(o.req), x, y, size, Object.assign(a, { color: GREY2, maxW: 124 }));
       const P = costPieces(o);
@@ -7604,7 +7667,7 @@ globalThis.__DEV__ = {sha: "b7e4917", built: "2026-10-18"};
       l2 = "permanent · works in POWERED + STORY";
     }
     txt(name, x0, top + 22, 20, { align: "left", maxW: 300 });
-    const tagC = o.state === "EQUIPPED" || o.state === "LEARNED" ? GREEN : o.state === "LOCKED" ? GREY2 : INK;
+    const tagC = o.state === "EQUIPPED" || o.state === "LEARNED" || o.state === "ON" ? GREEN : o.state === "OFF (DEV)" ? LRED : o.state === "LOCKED" ? GREY2 : INK;
     txt(o.state === "NEW" ? "NOT LEARNED" : o.state, 440, top + 22, 13, { align: "right", color: tagC, halo: false });
     txt(l1, x0, top + 47, 14, { align: "left", halo: false, maxW: 400 });
     txt(l2, x0, top + 67, 12, { align: "left", color: GREY2, halo: false, maxW: 400 });
@@ -7626,7 +7689,7 @@ globalThis.__DEV__ = {sha: "b7e4917", built: "2026-10-18"};
     if (o.action) {
       const ok = labCheck(o, s).ok;
       cardBox(LAB_BTN_X, LAB_BTN_Y, LAB_BTN_W, LAB_BTN_H, 87, ok ? "#e7f3dc" : "#f1ece0", ok ? GREEN : "#a39d8e", 2.6);
-      txt(o.action, LAB_BTN_X + LAB_BTN_W / 2, LAB_BTN_Y + LAB_BTN_H / 2 + 1, 19, { color: ok ? GREEN : GREY2, halo: false });
+      txt(o.action, LAB_BTN_X + LAB_BTN_W / 2, LAB_BTN_Y + LAB_BTN_H / 2 + 1, 19, { color: ok ? GREEN : GREY2, halo: false, maxW: 118 });
     } else {
       txt(
         o.state === "LEARNED" ? "LEARNED" : o.mk >= 3 ? "MAXED" : "EQUIPPED",
