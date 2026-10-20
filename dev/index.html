@@ -72,7 +72,7 @@ window.addEventListener('error', function(e){
    BUILT FILE — do not edit by hand. Source lives in src/*.js;
    rebuild with:  node build.mjs
    ================================================================ */
-globalThis.__DEV__ = {sha: "477d9d7", built: "2026-10-18"};
+globalThis.__DEV__ = {sha: "3ffcd13", built: "2026-10-20"};
 "use strict";
 (() => {
   // src/util.js
@@ -6146,6 +6146,117 @@ globalThis.__DEV__ = {sha: "477d9d7", built: "2026-10-18"};
     if (G.state === "PLAY" || G.state === "BOSS") G.paused = true;
   });
 
+  // src/art/webfx.js
+  var SILK = "#fbf9f0";
+  var easeOut = (u) => 1 - Math.pow(1 - u, 3);
+  var angDiff = (a, b) => Math.atan2(Math.sin(a - b), Math.cos(a - b));
+  function orbWeb(g, cx, cy, R, o) {
+    const sr = mulberry32(o.seed), wr = mulberry32(o.boil), J = o.jit, n = o.n, sx = o.sx || 1, sy2 = o.sy || 1;
+    const wob = (x, y) => [x + (wr() - 0.5) * J, y + (wr() - 0.5) * J];
+    const spokes = [], rings = o.rings.map(() => []);
+    for (let i = 0; i < n; i++) {
+      const a = (o.rot || 0) + (i + (sr() - 0.5) * 0.35) / n * TAU2, c = Math.cos(a), s = Math.sin(a);
+      let len = (o.out || 1.06) * (1 + (sr() - 0.5) * 0.1);
+      if (o.anchors) {
+        for (const an of o.anchors) if (Math.abs(angDiff(a, an)) < Math.PI / n) len *= o.anchorLen || 1.45;
+      }
+      const pts = [wob(cx, cy)];
+      for (let k = 0; k < o.rings.length; k++) {
+        const rr = R * o.rings[k] * (1 + (sr() - 0.5) * 0.08), p = wob(cx + c * rr * sx, cy + s * rr * sy2);
+        pts.push(p);
+        rings[k].push(p);
+      }
+      pts.push(wob(cx + c * R * len * sx, cy + s * R * len * sy2));
+      spokes.push(pts);
+    }
+    const segs = rings.map((P) => P.map((p0, i) => {
+      const p1 = P[(i + 1) % n], k = 1 - o.sag * (1 + (sr() - 0.5) * 0.5);
+      return [p0, wob(cx + ((p0[0] + p1[0]) / 2 - cx) * k, cy + ((p0[1] + p1[1]) / 2 - cy) * k), p1];
+    }));
+    const spokePath = () => {
+      g.beginPath();
+      for (const p of spokes) {
+        g.moveTo(p[0][0], p[0][1]);
+        for (let i = 1; i < p.length; i++) g.lineTo(p[i][0], p[i][1]);
+      }
+    };
+    const ringPath = () => {
+      g.beginPath();
+      for (const S2 of segs) {
+        g.moveTo(S2[0][0][0], S2[0][0][1]);
+        for (const [, c, p1] of S2) g.quadraticCurveTo(c[0], c[1], p1[0], p1[1]);
+      }
+    };
+    g.save();
+    g.lineCap = "round";
+    g.lineJoin = "round";
+    g.globalAlpha = o.alpha * o.inkA;
+    g.strokeStyle = INK2;
+    spokePath();
+    g.lineWidth = o.lw[0];
+    g.stroke();
+    ringPath();
+    g.lineWidth = o.lw[2];
+    g.stroke();
+    g.globalAlpha = o.alpha;
+    g.strokeStyle = SILK;
+    spokePath();
+    g.lineWidth = o.lw[1];
+    g.stroke();
+    ringPath();
+    g.lineWidth = o.lw[3];
+    g.stroke();
+    g.restore();
+  }
+  function strand(g, rng, x0, y0, x1, y1, u, alpha) {
+    const cx = (x0 + x1) / 2, cy = (y0 + y1) / 2 + Math.hypot(x1 - x0, y1 - y0) * 0.1, N = 8, pts = [];
+    for (let i = 0; i <= N; i++) {
+      const t = u * i / N, m = 1 - t;
+      const x = m * m * x0 + 2 * m * t * cx + t * t * x1, y = m * m * y0 + 2 * m * t * cy + t * t * y1;
+      pts.push(i === 0 ? [x, y] : [x + (rng() - 0.5) * 1.4, y + (rng() - 0.5) * 1.4]);
+    }
+    const path = () => {
+      g.beginPath();
+      g.moveTo(pts[0][0], pts[0][1]);
+      for (let i = 1; i <= N; i++) g.lineTo(pts[i][0], pts[i][1]);
+    };
+    g.globalAlpha = alpha * 0.9;
+    g.strokeStyle = INK2;
+    g.lineWidth = 3.4;
+    path();
+    g.stroke();
+    g.globalAlpha = alpha;
+    g.strokeStyle = SILK;
+    g.lineWidth = 1.7;
+    path();
+    g.stroke();
+  }
+  var BURST_R = 170;
+  function webBurst(g, t, cx, cy, targets, boil) {
+    const a = t < 0.5 ? 1 : clamp(1 - (t - 0.5) / 0.4, 0, 1);
+    if (a <= 0) return;
+    const k = easeOut(clamp(t / 0.3, 0, 1));
+    orbWeb(g, cx, cy, BURST_R * (0.15 + 0.85 * k), {
+      n: 10,
+      rings: [0.22, 0.4, 0.58, 0.76, 0.94],
+      sag: 0.2,
+      out: 1.07,
+      rot: -0.1,
+      jit: 1.4,
+      seed: 24241,
+      boil: 9001 + boil * 31,
+      lw: [3.6, 1.8, 3, 1.5],
+      alpha: a,
+      inkA: 0.85
+    });
+    const rng = mulberry32(4243 + boil * 17);
+    g.save();
+    g.lineCap = "round";
+    g.lineJoin = "round";
+    for (const [x, y] of targets) strand(g, rng, cx, cy, x, y, k, a);
+    g.restore();
+  }
+
   // src/icons.js
   var PAPER = "#f9f6ec";
   var pol = (cx, cy, r, a) => [cx + Math.cos(a) * r, cy + Math.sin(a) * r];
@@ -6716,7 +6827,7 @@ globalThis.__DEV__ = {sha: "477d9d7", built: "2026-10-18"};
           ey,
           { sx: e.st === "bite" ? e.lungeDir : e.dir }
         );
-        if (e.webT > 0) webWrap(e.x, ey + 8, 14);
+        if (e.webT > 0) webWrap(e.x, ey + WEB_DY.minion, 14);
       } else {
         drawSpr("citizen", e.x, ey);
         if (Math.sin(G.t * 2.2 + e.p.x) > 0)
@@ -6819,6 +6930,7 @@ globalThis.__DEV__ = {sha: "477d9d7", built: "2026-10-18"};
       const sq = playerSq();
       const cloaked = G.cloakT > 0 && G.state !== "DEAD";
       if (G.legsT > 0 && G.state !== "DEAD") ironLegs(py, false);
+      if (G.powFx && G.powFx.kind === "burst" && G.state !== "DEAD") burstWeb(py + PLAYER_DY);
       drawSpr(spideyKey(G.player.pose), G.player.x, py + PLAYER_DY, {
         sx: G.player.face * (1 + sq),
         sy: 1 - sq,
@@ -7187,6 +7299,7 @@ globalThis.__DEV__ = {sha: "477d9d7", built: "2026-10-18"};
     cv.style.cursor = G.state === "TITLE" || G.state === "DEAD" || G.state === "MAP" || G.state === "CLEAR" ? "pointer" : "crosshair";
     document.getElementById("tiltBtn").style.display = needsTiltPermission && !G.tiltGranted && G.state === "TITLE" ? "block" : "none";
   }
+  var WEB_DY = { minion: 8 };
   function webWrap(x, y, r) {
     const rng = mulberry32(Math.floor(x) * 7 + 13);
     ctx.save();
@@ -7196,6 +7309,14 @@ globalThis.__DEV__ = {sha: "477d9d7", built: "2026-10-18"};
       inkLine(ctx, rng, x + r, y - 18 + i * 9, x - r, y - 9 + i * 9, { stroke: "#efece0", lw: 1.3, jit: 1, rough: false });
     }
     ctx.restore();
+  }
+  function burstWeb(fy) {
+    const targets = [];
+    for (const e of G.enemies) {
+      if (e.dead || e.webT <= 0) continue;
+      targets.push([e.x, sy(e.y) + (WEB_DY[e.kind] || 0)]);
+    }
+    webBurst(ctx, G.powFx.t, G.player.x, fy - 4, targets, G.boilFrame);
   }
   function powerButton() {
     const full = powerFull(), grey = powerGreyed(), active = powerActive();
@@ -7306,21 +7427,8 @@ globalThis.__DEV__ = {sha: "477d9d7", built: "2026-10-18"};
   }
   function powerFx(py) {
     const fx = G.powFx, t = fx.t, x = G.player.x, col = POWER_COL[fx.kind];
-    const rng = mulberry32(G.boilFrame * 23 + 6);
     ctx.save();
     if (fx.kind === "burst") {
-      const k = clamp(t / 0.35, 0, 1);
-      ctx.globalAlpha = clamp(1 - t / 0.9, 0, 1) * 0.85;
-      for (const e of G.enemies) {
-        if (e.dead || e.webT <= 0) continue;
-        const ex = lerp(x, e.x, k), ey = lerp(py - 20, sy(e.y) - 14, k);
-        inkLine(ctx, rng, x, py - 20, ex, ey, { stroke: "#efece0", lw: 2.4, jit: 1, rough: false });
-        inkLine(ctx, rng, x, py - 20, ex, ey, { stroke: "#8a8578", lw: 1, jit: 1, rough: false });
-      }
-      for (let i = 0; i < 10; i++) {
-        const a = i / 10 * TAU, r = 30 + 160 * k;
-        inkLine(ctx, rng, x, py - 20, x + Math.cos(a) * r, py - 20 + Math.sin(a) * r, { stroke: "#b9b2a0", lw: 1.2, jit: 0.8, rough: false });
-      }
     } else if (fx.kind === "riff") {
       ctx.strokeStyle = col;
       for (let i = 0; i < 3; i++) {
